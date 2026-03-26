@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Meow-cenary: 랭킹 PvP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#eee;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas{width:100%;flex:1;display:block;min-height:0}
+#ui{background:#141422;border-top:2px solid #222;padding:8px;display:flex;flex-direction:column;gap:6px;height:36%;overflow:hidden}
+button{background:#6c3bd5;color:#fff;border:none;padding:5px 11px;border-radius:5px;font-weight:bold;font-size:11px;cursor:pointer;transition:all .15s}
+button:hover{filter:brightness(1.2)}button:active{transform:scale(.95)}button:disabled{opacity:.4;cursor:default}
+.btn-eq{background:#2a5a3a}.btn-pvp{background:#c0392b}.btn-rank{background:#1a5a8a}.btn-save{background:#5a4a10}
+.row{display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap}
+.gold{color:#ffd93d;font-weight:bold;font-size:11px}.info{color:#888;font-size:10px;margin-left:auto}
+.slots{display:flex;gap:3px;flex-shrink:0}.slots-label{font-size:10px;color:#888;width:26px;align-self:center}
+.slot{flex:1;height:60px;border-radius:5px;border:2px solid #333;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;position:relative;cursor:pointer;transition:all .2s}
+.slot .emoji{font-size:18px}.slot .stat{font-size:7px;color:#aaa}.slot .lvl{font-size:7px;font-weight:bold}
+.slot .lvup{position:absolute;bottom:-2px;font-size:6px;background:#141422;border:1px solid #333;border-radius:3px;padding:1px 3px;color:#6c3bd5;font-weight:bold;cursor:pointer}
+.bench-area{flex:1;overflow-y:auto;min-height:0}.bench-label{font-size:10px;color:#888}
+.bench{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+.bench-cat{width:44px;height:44px;border-radius:4px;border:1px solid #333;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;cursor:pointer}
+.bench-cat:hover{border-color:#6c3bd5}
+.equip-panel{flex:1;overflow-y:auto}.equip-slots{display:flex;gap:3px;margin-bottom:4px}
+.equip-slot{width:52px;height:44px;border-radius:4px;border:1px solid #333;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;cursor:pointer}
+.inv-grid{display:flex;flex-wrap:wrap;gap:3px}
+.inv-item{width:60px;height:52px;border-radius:4px;border:1px solid #333;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:7px;cursor:pointer}
+.inv-item:hover{border-color:#6c3bd5}
+.pvp-center{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px}
+.pulse{animation:pulse 1.5s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:100;padding:12px}
+.modal{background:#141422;border:1px solid #2a2a3a;border-radius:10px;padding:16px;width:100%;max-width:340px;max-height:88vh;overflow-y:auto}
+.modal h3{font-size:13px;font-weight:bold;margin-bottom:10px;color:#fff}
+.modal input,.modal textarea{width:100%;background:#1a1a2e;border:1px solid #444;color:#fff;padding:6px 8px;border-radius:5px;font-size:11px;outline:none;font-family:inherit}
+.modal textarea{resize:vertical;min-height:48px}
+.modal label{font-size:10px;color:#888;display:block;margin-bottom:3px;margin-top:8px}
+.modal-btns{display:flex;gap:6px;margin-top:12px}.modal-btns button{flex:1;padding:7px}
+.rank-list{display:flex;flex-direction:column;gap:4px;max-height:58vh;overflow-y:auto}
+.rank-item{background:#1a1a2e;border-radius:6px;padding:7px 10px;border-left:3px solid #333}
+.rank-item.r-gold{border-left-color:#ffd93d}.rank-item.r-silver{border-left-color:#aaa}
+.rank-item.r-bronze{border-left-color:#cd7f32}.rank-item.r-me{border-left-color:#6c3bd5}
+.rank-header{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.rank-num{font-size:11px;font-weight:bold;width:20px;color:#888}
+.rank-name{font-size:11px;font-weight:bold;flex:1}
+.rank-score{font-size:11px;color:#ffd93d;font-weight:bold}
+.rank-detail{font-size:9px;color:#555}
+.rank-comment{font-size:9px;color:#999;margin-top:2px;font-style:italic}
+.net{font-size:9px;padding:2px 5px;border-radius:3px;background:#1a2a1a;color:#44ff88}
+.net.err{background:#2a1a1a;color:#ff6644}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div class="row" id="topRow"></div>
+  <div id="mainPanel"></div>
+  <div id="equipPanel" style="display:none"></div>
+</div>
+<div id="modalContainer"></div>
+<script>
+// ============ JSONBIN ============
+const BIN_ID='69c49024b7ec241ddca3bfb6';
+const API_KEY='$2a$10$EHr0nZlhpAiZRZ4Ev.Ttq.5DES52whpsQQzzUNLDxQE6cY4je6NlW';
+const BIN_URL=`https://api.jsonbin.io/v3/b/${BIN_ID}`;
+let _cache=null,_saving=false,_dirty=false;
+
+async function dbRead(){
+  try{
+    const r=await fetch(BIN_URL,{headers:{'X-Master-Key':API_KEY}});
+    if(!r.ok)throw new Error(r.status);
+    const j=await r.json();
+    _cache=j.record;
+    if(!_cache.rankings)_cache.rankings=[];
+    if(!_cache.decks)_cache.decks={};
+    netOk(true);return _cache;
+  }catch(e){netOk(false);return _cache||{rankings:[],decks:{}};}
+}
+async function dbWrite(data){
+  if(_saving){_dirty=true;_cache=data;return;}
+  _saving=true;_cache=data;
+  try{
+    const r=await fetch(BIN_URL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':API_KEY,'X-Bin-Versioning':'false'},body:JSON.stringify(data)});
+    if(!r.ok)throw new Error(r.status);
+    netOk(true);
+  }catch(e){netOk(false);}
+  _saving=false;
+  if(_dirty){_dirty=false;await dbWrite(_cache);}
+}
+function netOk(ok){const el=document.getElementById('netSt');if(el){el.textContent=ok?'🟢':'🔴';el.className='net'+(ok?'':' err');}}
+
+// ============ CONSTANTS ============
+const CLASS_COLORS={warrior:'#ff6b6b',mage:'#6bc5ff',gunner:'#ffd93d',bard:'#c084fc'};
+const CLASS_EMOJIS={warrior:'⚔️',mage:'🔮',gunner:'🔫',bard:'🎸'};
+const RARITY_COLORS={N:'#aaa',R:'#55aaff',SR:'#cc66ff',SSR:'#ffcc00'};
+const CAT_NAMES=['냥냥이','뭉치','치즈','까망이','나비','루나','모모','코코','소라','하루','미르','초코','별이','구름','눈송이','호두','콩이','탱탱이'];
+const BATTLE_Y=60,GACHA_COST=50,LVL_COST=20,DROP_CHANCE=0.15;
+const EQUIP_NAMES={weapon:['날카로운 발톱','마법 지팡이','황금 검','번개 채찍','드래곤 클로'],armor:['가죽 갑옷','미스릴 조끼','마법 로브','강철 흉갑','드래곤 갑옷'],accessory:['행운의 방울','속도의 부적','힘의 반지','마나 목걸이','전설의 왕관']};
+const EQUIP_ICONS={weapon:'🗡️',armor:'🛡️',accessory:'💍'};
+let idC=0;const gid=()=>'id_'+(idC++);
+
+// ============ FACTORY ============
+function createCat(cls,rarity,slot){
+  const rm={N:1,R:1.5,SR:2.2,SSR:3.5}[rarity];
+  const bs={warrior:{hp:150,atk:20,spd:.5},mage:{hp:80,atk:35,spd:.3},gunner:{hp:90,atk:28,spd:.6},bard:{hp:100,atk:15,spd:.4}}[cls];
+  const ba=Math.floor(bs.atk*rm);
+  return{id:gid(),name:CAT_NAMES[Math.floor(Math.random()*CAT_NAMES.length)],charClass:cls,rarity,level:1,
+  hp:Math.floor(bs.hp*rm),maxHp:Math.floor(bs.hp*rm),baseAtk:ba,atk:ba,baseSpeed:bs.spd,speed:bs.spd,
+  x:0,y:0,targetX:0,targetY:0,attackCooldown:cls==='warrior'?30:cls==='gunner'?20:40,attackTimer:0,
+  color:CLASS_COLORS[cls],size:22,scaleAnim:0,slot,skillCooldown:200,skillTimer:0,
+  equipment:{weapon:null,armor:null,accessory:null},dragging:false};
+}
+function createEnemy(wave,cw,bh){const hp=30+wave*15+Math.floor(Math.random()*wave*5);
+return{id:gid(),hp,maxHp:hp,atk:5+wave*2,x:cw+20+Math.random()*80,y:BATTLE_Y+40+Math.random()*(bh-80),
+speed:.4+Math.random()*.3+wave*.02,size:16+Math.random()*8,color:`hsl(${Math.random()*30+10},60%,45%)`,hitAnim:0,dead:false,deathAnim:0};}
+function createProj(x,y,tx,ty,dmg,col,sz){const dx=tx-x,dy=ty-y,d=Math.sqrt(dx*dx+dy*dy)||1;
+return{x,y,vx:dx/d*6,vy:dy/d*6,damage:dmg,color:col,size:sz,life:120,trail:[]};}
+function spawnParts(x,y,n,col,type,sm=1){const r=[];for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=(1+Math.random()*3)*sm;
+r.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:20+Math.random()*30,maxLife:50,color:col,size:2+Math.random()*4,type});}return r;}
+function mkText(x,y,t,c,s=14){return{x,y,text:t,color:c,life:60,vy:-1.5,size:s};}
+function rollGacha(){const c=['warrior','mage','gunner','bard'],cl=c[Math.floor(Math.random()*4)],r=Math.random();
+return{charClass:cl,rarity:r<.5?'N':r<.8?'R':r<.95?'SR':'SSR'};}
+function createEquip(wave){const slots=['weapon','armor','accessory'],slot=slots[Math.floor(Math.random()*3)],
+names=EQUIP_NAMES[slot],r=Math.random(),rarity=r<.5?'N':r<.8?'R':r<.95?'SR':'SSR',
+mult={N:1,R:2,SR:3.5,SSR:6}[rarity],bs=3+wave*1.5;
+return{id:gid(),name:names[Math.floor(Math.random()*names.length)],slot,rarity,
+atkBonus:slot==='weapon'?Math.floor(bs*mult):Math.floor(bs*mult*.3),
+hpBonus:slot==='armor'?Math.floor(bs*mult*5):Math.floor(bs*mult),
+speedBonus:slot==='accessory'?+(mult*.05).toFixed(2):0,icon:EQUIP_ICONS[slot]};}
+function createDrop(x,y,w){return{x,y,vy:-2,life:300,equipment:createEquip(w),collected:false};}
+function recalcStats(cat){let a=0,h=0,s=0;for(const eq of Object.values(cat.equipment)){if(eq){a+=eq.atkBonus;h+=eq.hpBonus;s+=eq.speedBonus;}}
+cat.atk=cat.baseAtk+a;cat.speed=cat.baseSpeed+s;const oh=cat.maxHp;cat.maxHp=oh+h;if(cat.hp>cat.maxHp)cat.hp=cat.maxHp;}
+function positionCats(cats,cw,bh){cats.filter(c=>c.slot>=0&&!c.dragging).forEach((cat,i)=>{
+if(cat.targetX===0&&cat.targetY===0){cat.targetX=cat.charClass==='warrior'?80:40;cat.targetY=BATTLE_Y+60+i*50;}
+if(cat.x===0){cat.x=cat.targetX;cat.y=cat.targetY;}});}
+function checkSynergy(cats){const c=new Set(cats.map(c=>c.charClass));return c.has('bard')&&(c.has('mage')||c.has('gunner'));}
+
+// ============ STATE ============
+const starter=createCat('warrior','N',0);
+const S={cats:[starter],enemies:[],projectiles:[],particles:[],floatingTexts:[],
+gold:100,wave:1,combo:0,maxCombo:0,comboTimer:0,cameraShake:0,slowMotion:0,flashAlpha:0,synergyCooldown:0,
+teamSlots:[starter,null,null,null],roster:[starter],gachaAnim:null,totalKills:0,inventory:[],equipDrops:[]};
+
+let playerId=null,playerName=null;
+try{playerId=localStorage.getItem('meow_pid');playerName=localStorage.getItem('meow_nick');}catch(e){}
+let pvpStatus='idle',pvpMatch=null,pvpBattle=null;
+
+// ============ DB OPS ============
+function serializeTeam(){
+  return{cats:S.teamSlots.filter(c=>c!==null).map(c=>({
+    charClass:c.charClass,rarity:c.rarity,level:c.level,atk:c.atk,maxHp:c.maxHp,name:c.name,color:c.color,
+    equipment:{
+      weapon:c.equipment.weapon?{atkBonus:c.equipment.weapon.atkBonus,hpBonus:c.equipment.weapon.hpBonus,speedBonus:c.equipment.weapon.speedBonus,icon:c.equipment.weapon.icon,name:c.equipment.weapon.name}:null,
+      armor:c.equipment.armor?{atkBonus:c.equipment.armor.atkBonus,hpBonus:c.equipment.armor.hpBonus,speedBonus:c.equipment.armor.speedBonus,icon:c.equipment.armor.icon,name:c.equipment.armor.name}:null,
+      accessory:c.equipment.accessory?{atkBonus:c.equipment.accessory.atkBonus,hpBonus:c.equipment.accessory.hpBonus,speedBonus:c.equipment.accessory.speedBonus,icon:c.equipment.accessory.icon,name:c.equipment.accessory.name}:null
+    }
+  }))};
+}
+async function saveDeck(){
+  if(!playerId)return;
+  const team=serializeTeam();if(team.cats.length===0)return;
+  const db=await dbRead();
+  db.decks[playerId]={playerId,playerName,team,wave:S.wave,savedAt:Date.now()};
+  await dbWrite(db);
+  S.floatingTexts.push(mkText(canvas.width/2,80,'💾 덱 저장됨!','#00ffaa',15));
+}
+async function saveRanking(won,comment,opponentName,score){
+  if(!playerId)return;
+  const db=await dbRead();
+  if(!db.rankings)db.rankings=[];
+  const idx=db.rankings.findIndex(r=>r.playerId===playerId);
+  if(idx>=0){
+    db.rankings[idx].wins+=(won?1:0);db.rankings[idx].losses+=(won?0:1);
+    db.rankings[idx].totalScore+=score;db.rankings[idx].lastComment=comment||db.rankings[idx].lastComment||'';
+    db.rankings[idx].lastOpponent=opponentName;db.rankings[idx].lastAt=Date.now();db.rankings[idx].playerName=playerName;
+  }else{
+    db.rankings.push({playerId,playerName,wins:won?1:0,losses:won?0:1,totalScore:score,lastComment:comment||'',lastOpponent:opponentName,lastAt:Date.now()});
+  }
+  db.rankings.sort((a,b)=>b.wins-a.wins||b.totalScore-a.totalScore);
+  await dbWrite(db);
+}
+function calcScore(battle){
+  const surv=battle.myUnits.filter(u=>!u.dead);
+  const hpLeft=surv.reduce((s,u)=>s+u.hp,0);
+  const maxHp=battle.myUnits.reduce((s,u)=>s+u.maxHp,0);
+  return Math.floor(surv.length*500+(maxHp>0?hpLeft/maxHp*300:0)+(battle.winner==='me'?200:0));
+}
+
+// ============ ENGINE ============
+function findClosest(x,y,arr){let cl=null,md=Infinity;arr.forEach(e=>{if(e.dead)return;const d=(e.x-x)**2+(e.y-y)**2;if(d<md){md=d;cl=e;}});return cl;}
+function dealDmg(e,dmg,col){e.hp-=dmg;e.hitAnim=5;S.particles.push(...spawnParts(e.x,e.y,5,col,'hit'));
+S.floatingTexts.push(mkText(e.x+(Math.random()-.5)*20,e.y-10,`-${dmg}`,col,12));
+if(e.hp<=0&&!e.dead){e.dead=true;e.deathAnim=0;S.combo++;S.comboTimer=120;S.maxCombo=Math.max(S.maxCombo,S.combo);
+S.totalKills++;S.gold+=5+Math.floor(S.wave*1.5);S.particles.push(...spawnParts(e.x,e.y,15,'#ffd93d','death',1.5));
+S.particles.push(...spawnParts(e.x,e.y,8,col,'death',2));S.floatingTexts.push(mkText(e.x,e.y-20,`+${5+Math.floor(S.wave*1.5)}G`,'#ffd93d',14));
+if(Math.random()<DROP_CHANCE)S.equipDrops.push(createDrop(e.x,e.y,S.wave));}}
+function update(cw,ch,dt){const bh=ch*.65-BATTLE_Y;let speed=1;
+if(S.slowMotion>0){speed=.15;S.slowMotion-=dt;}const sd=dt*speed;
+if(S.comboTimer>0){S.comboTimer-=dt;if(S.comboTimer<=0)S.combo=0;}
+if(S.cameraShake>0)S.cameraShake*=.9;if(S.flashAlpha>0)S.flashAlpha-=.03;if(S.synergyCooldown>0)S.synergyCooldown-=dt;
+positionCats(S.cats,cw,bh);
+S.cats.forEach(cat=>{if(cat.dragging)return;cat.x+=(cat.targetX-cat.x)*.08*sd;cat.y+=(cat.targetY-cat.y)*.08*sd;if(cat.scaleAnim>0)cat.scaleAnim-=.05*sd;});
+if(S.enemies.filter(e=>!e.dead).length<5+S.wave)S.enemies.push(createEnemy(S.wave,cw,bh));
+S.enemies.forEach(e=>{if(e.dead){e.deathAnim+=dt;return;}e.x-=e.speed*sd;if(e.hitAnim>0)e.hitAnim-=dt;});
+S.enemies=S.enemies.filter(e=>{if(e.dead&&e.deathAnim>15)return false;if(e.x<-50)return false;return true;});
+const ac=S.cats.filter(c=>c.slot>=0);
+ac.forEach(cat=>{cat.attackTimer+=sd;cat.skillTimer+=sd;
+if(cat.attackTimer>=cat.attackCooldown){cat.attackTimer=0;const t=findClosest(cat.x,cat.y,S.enemies);
+if(t){if(cat.charClass==='warrior'){const dx=t.x-cat.x,dy=t.y-cat.y,dist=Math.sqrt(dx*dx+dy*dy);
+if(dist<120){dealDmg(t,cat.atk,cat.color);S.cameraShake=Math.max(S.cameraShake,3);}else{cat.targetX=t.x-40;cat.targetY=t.y;}}
+else{const pc=Math.min(1+Math.floor(cat.level/3),10),sa=Math.min(pc*.1,.5);
+for(let i=0;i<pc;i++){const a=Math.atan2(t.y-cat.y,t.x-cat.x)+(i-(pc-1)/2)*sa;
+S.projectiles.push(createProj(cat.x,cat.y,cat.x+Math.cos(a)*300,cat.y+Math.sin(a)*300,cat.atk,cat.color,Math.min(3+cat.level*.5,12)));}
+S.cameraShake=Math.max(S.cameraShake,1.5);}}}
+if(cat.skillTimer>=cat.skillCooldown&&cat.level>=3){cat.skillTimer=0;const es=S.enemies.filter(e=>!e.dead);
+if(es.length>0){const dmg=cat.atk*3;es.slice(0,5).forEach(e=>{dealDmg(e,dmg,'#ffcc00');S.particles.push(...spawnParts(e.x,e.y,8,'#ffcc00','hit',1.5));});
+S.cameraShake=Math.max(S.cameraShake,6);S.floatingTexts.push(mkText(cat.x,cat.y-30,'SKILL!','#ffcc00',20));}}});
+if(S.synergyCooldown<=0&&checkSynergy(ac)&&ac.length>=2){S.synergyCooldown=300;S.slowMotion=30;
+setTimeout(()=>{S.flashAlpha=1;S.cameraShake=15;const es=S.enemies.filter(e=>!e.dead),dmg=ac.reduce((s,c)=>s+c.atk,0)*2;
+es.forEach(e=>{dealDmg(e,dmg,'#c084fc');S.particles.push(...spawnParts(e.x,e.y,15,'#c084fc','synergy',2));});
+S.floatingTexts.push(mkText(cw/2,ch*.3,'✦ SYNERGY BURST ✦','#c084fc',28));},500);}
+S.projectiles.forEach(p=>{p.trail.push({x:p.x,y:p.y});if(p.trail.length>6)p.trail.shift();p.x+=p.vx*sd;p.y+=p.vy*sd;p.life-=sd;
+S.enemies.forEach(e=>{if(e.dead)return;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<(e.size+p.size)**2){dealDmg(e,p.damage,p.color);p.life=0;S.cameraShake=Math.max(S.cameraShake,2);}});});
+S.projectiles=S.projectiles.filter(p=>p.life>0);
+S.particles.forEach(p=>{p.x+=p.vx*sd;p.y+=p.vy*sd;p.vx*=.96;p.vy*=.96;p.life-=sd;});S.particles=S.particles.filter(p=>p.life>0);
+S.floatingTexts.forEach(t=>{t.y+=t.vy*sd;t.life-=sd;});S.floatingTexts=S.floatingTexts.filter(t=>t.life>0);
+S.equipDrops.forEach(d=>{if(d.collected)return;d.vy+=.1;d.y+=d.vy;d.life-=dt;
+ac.forEach(cat=>{const dx=cat.x-d.x,dy=cat.y-d.y;if(dx*dx+dy*dy<3600){d.collected=true;S.inventory.push(d.equipment);
+S.particles.push(...spawnParts(d.x,d.y,10,'#00ffaa','equip',1.5));S.floatingTexts.push(mkText(d.x,d.y-10,`${d.equipment.icon} ${d.equipment.name}`,'#00ffaa',12));}});});
+S.equipDrops=S.equipDrops.filter(d=>!d.collected&&d.life>0);
+if(S.totalKills>0&&S.totalKills%(8+S.wave*2)===0&&S.enemies.filter(e=>!e.dead).length<=2){S.wave++;
+S.floatingTexts.push(mkText(cw/2,ch*.25,`WAVE ${S.wave}`,'#ffd93d',24));}}
+
+// ============ PVP ENGINE ============
+function initPvPBattle(myTeam,enemyTeam,cw,ch){
+  const bh=ch*.85;
+  const mk=(cats,isEnemy)=>cats.map((c,i)=>({id:(isEnemy?'en':'my')+'_'+i,name:c.name,charClass:c.charClass,color:c.color,rarity:c.rarity,level:c.level,
+  hp:c.maxHp,maxHp:c.maxHp,atk:c.atk,x:isEnemy?cw-60-(i%2)*40:60+(i%2)*40,y:bh*.2+i*(bh*.13),
+  attackTimer:0,attackCooldown:c.charClass==='warrior'?30:c.charClass==='gunner'?20:40,hitAnim:0,dead:false,deathAnim:0,isEnemy,size:22}));
+  return{myUnits:mk(myTeam.cats,false),enemyUnits:mk(enemyTeam.cats,true),projectiles:[],particles:[],floatingTexts:[],cameraShake:0,flashAlpha:0,winner:null,finished:false,timer:0};
+}
+function updatePvPBattle(st,cw,ch){if(st.finished)return;st.timer++;
+if(st.cameraShake>0)st.cameraShake*=.9;if(st.flashAlpha>0)st.flashAlpha-=.03;
+[...st.myUnits,...st.enemyUnits].forEach(u=>{if(u.dead){u.deathAnim++;return;}if(u.hitAnim>0)u.hitAnim--;u.attackTimer++;
+if(u.attackTimer>=u.attackCooldown){u.attackTimer=0;const targets=u.isEnemy?st.myUnits:st.enemyUnits;
+let cl=null,md=Infinity;targets.forEach(t=>{if(t.dead)return;const d=(t.x-u.x)**2+(t.y-u.y)**2;if(d<md){md=d;cl=t;}});
+if(!cl)return;
+if(u.charClass==='warrior'){const dx=cl.x-u.x,dy=cl.y-u.y;if(Math.sqrt(dx*dx+dy*dy)<120){pvpDmg(st,cl,u.atk,u.color);st.cameraShake=Math.max(st.cameraShake,3);}}
+else{const cnt=Math.min(1+Math.floor(u.level/3),8),sp=Math.min(cnt*.1,.5);
+for(let i=0;i<cnt;i++){const a=Math.atan2(cl.y-u.y,cl.x-u.x)+(i-(cnt-1)/2)*sp;
+st.projectiles.push({x:u.x,y:u.y,vx:Math.cos(a)*6,vy:Math.sin(a)*6,damage:u.atk,color:u.color,size:Math.min(3+u.level*.5,12),life:120,trail:[],targetIsEnemy:!u.isEnemy});}
+st.cameraShake=Math.max(st.cameraShake,1.5);}}});
+st.projectiles.forEach(p=>{p.trail.push({x:p.x,y:p.y});if(p.trail.length>6)p.trail.shift();p.x+=p.vx;p.y+=p.vy;p.life--;
+const tgts=p.targetIsEnemy?st.enemyUnits:st.myUnits;
+for(const t of tgts){if(t.dead)continue;const dx=t.x-p.x,dy=t.y-p.y;if(dx*dx+dy*dy<(t.size+p.size)**2){pvpDmg(st,t,p.damage,p.color);p.life=0;st.cameraShake=Math.max(st.cameraShake,2);break;}}});
+st.projectiles=st.projectiles.filter(p=>p.life>0);
+st.particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=.96;p.vy*=.96;p.life--;});st.particles=st.particles.filter(p=>p.life>0);
+st.floatingTexts.forEach(t=>{t.y+=t.vy;t.life--;});st.floatingTexts=st.floatingTexts.filter(t=>t.life>0);
+const myA=st.myUnits.filter(u=>!u.dead).length,enA=st.enemyUnits.filter(u=>!u.dead).length;
+if(myA===0||enA===0){st.finished=true;st.winner=enA===0?'me':'opponent';st.flashAlpha=1;st.cameraShake=15;}
+if(st.timer>1800&&!st.finished){st.finished=true;const mh=st.myUnits.reduce((s,u)=>s+(u.dead?0:u.hp),0),eh=st.enemyUnits.reduce((s,u)=>s+(u.dead?0:u.hp),0);st.winner=mh>=eh?'me':'opponent';st.flashAlpha=1;}}
+function pvpDmg(st,t,dmg,col){t.hp-=dmg;t.hitAnim=5;
+for(let i=0;i<5;i++){const a=Math.random()*Math.PI*2,s=1+Math.random()*3;
+st.particles.push({x:t.x,y:t.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:20+Math.random()*20,maxLife:40,color:col,size:2+Math.random()*3});}
+st.floatingTexts.push({x:t.x+(Math.random()-.5)*20,y:t.y-15,text:`-${dmg}`,color:col,life:45,vy:-1.5,size:12});
+if(t.hp<=0&&!t.dead){t.dead=true;t.deathAnim=0;for(let i=0;i<15;i++){const a=Math.random()*Math.PI*2,s=1+Math.random()*4;
+st.particles.push({x:t.x,y:t.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:25+Math.random()*30,maxLife:55,color:'#ffd93d',size:3+Math.random()*5});}}}
+
+// ============ RENDER ============
+function render(ctx,cw,ch,fc){ctx.save();
+if(S.cameraShake>.5)ctx.translate((Math.random()-.5)*S.cameraShake*2,(Math.random()-.5)*S.cameraShake*2);
+ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,cw,ch);
+const bh=ch*.65;const g=ctx.createLinearGradient(0,BATTLE_Y,0,bh);g.addColorStop(0,'#0d1117');g.addColorStop(1,'#151b2e');
+ctx.fillStyle=g;ctx.fillRect(0,BATTLE_Y,cw,bh-BATTLE_Y);
+ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;for(let y=BATTLE_Y;y<bh;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cw,y);ctx.stroke();}
+if(S.combo>0){const i=Math.min(S.combo/30,1);const cc=S.combo>20?`rgba(255,200,0,${i*.4})`:`rgba(255,60,60,${i*.3})`;
+ctx.shadowColor=cc;ctx.shadowBlur=30+i*40;ctx.strokeStyle=cc;ctx.lineWidth=3+i*5;ctx.strokeRect(2,2,cw-4,ch-4);ctx.shadowBlur=0;}
+ctx.fillStyle='#ffd93d';ctx.font='bold 13px monospace';ctx.textAlign='left';ctx.fillText(`💰 ${S.gold}`,10,22);ctx.fillText(`🌊 W${S.wave}`,10,38);
+if(S.combo>0){ctx.textAlign='center';ctx.font=`bold ${18+Math.min(S.combo,50)*.3}px monospace`;
+ctx.fillStyle=S.combo>20?'#ffcc00':S.combo>10?'#ff8844':'#ff6666';ctx.fillText(`${S.combo} COMBO!`,cw/2,33);}
+ctx.textAlign='right';ctx.font='11px monospace';ctx.fillStyle='#888';ctx.fillText(`K:${S.totalKills}`,cw-10,22);
+S.enemies.forEach(e=>{if(e.dead){const a=1-e.deathAnim/15;ctx.globalAlpha=a;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(e.x,e.y,e.size+e.deathAnim*2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;return;}
+const sh=e.hitAnim>0?(Math.random()-.5)*4:0;ctx.fillStyle=e.color;ctx.beginPath();ctx.arc(e.x+sh,e.y,e.size,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(e.x+sh-4,e.y-3,2,0,Math.PI*2);ctx.arc(e.x+sh+4,e.y-3,2,0,Math.PI*2);ctx.fill();
+if(e.hp<e.maxHp){const bw=e.size*2;ctx.fillStyle='#333';ctx.fillRect(e.x-bw/2,e.y-e.size-8,bw,4);ctx.fillStyle='#ff4444';ctx.fillRect(e.x-bw/2,e.y-e.size-8,bw*(e.hp/e.maxHp),4);}});
+S.projectiles.forEach(p=>{p.trail.forEach((t,i)=>{ctx.globalAlpha=i/p.trail.length*.5;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(t.x,t.y,p.size*.6,0,Math.PI*2);ctx.fill();});
+ctx.globalAlpha=1;ctx.shadowColor=p.color;ctx.shadowBlur=8;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(p.x,p.y,p.size*.4,0,Math.PI*2);ctx.fill();});
+S.cats.filter(c=>c.slot>=0).forEach(cat=>{const sc=1+cat.scaleAnim*.3,s=cat.size*sc,bob=cat.dragging?0:Math.sin(fc*.05+cat.slot)*2;
+const dx=cat.x,dy=cat.y+bob;ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(dx,dy+s+2,s*.7,4,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=cat.color;ctx.beginPath();ctx.arc(dx,dy,s,0,Math.PI*2);ctx.fill();
+ctx.beginPath();ctx.moveTo(dx-s*.7,dy-s*.5);ctx.lineTo(dx-s*.3,dy-s*1.2);ctx.lineTo(dx-s*.1,dy-s*.4);ctx.fill();
+ctx.beginPath();ctx.moveTo(dx+s*.7,dy-s*.5);ctx.lineTo(dx+s*.3,dy-s*1.2);ctx.lineTo(dx+s*.1,dy-s*.4);ctx.fill();
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(dx-5,dy-3,4,0,Math.PI*2);ctx.arc(dx+5,dy-3,4,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#111';ctx.beginPath();ctx.arc(dx-4,dy-3,2,0,Math.PI*2);ctx.arc(dx+6,dy-3,2,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle=RARITY_COLORS[cat.rarity];ctx.lineWidth=2;ctx.shadowColor=RARITY_COLORS[cat.rarity];ctx.shadowBlur=cat.dragging?15:5;
+ctx.beginPath();ctx.arc(dx,dy,s+3,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+let ex=dx-15;for(const eq of Object.values(cat.equipment)){if(eq){ctx.font='10px monospace';ctx.fillText(eq.icon,ex,dy+s+25);ex+=12;}}
+ctx.fillStyle='#fff';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText(`Lv.${cat.level}`,dx,dy+s+14);});
+S.equipDrops.forEach(d=>{if(d.collected)return;const pulse=Math.sin(fc*.1)*3;const col=RARITY_COLORS[d.equipment.rarity];
+ctx.shadowColor=col;ctx.shadowBlur=10+pulse;ctx.fillStyle='#222';ctx.beginPath();ctx.arc(d.x,d.y,10,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();ctx.shadowBlur=0;ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText(d.equipment.icon,d.x,d.y+4);});
+S.particles.forEach(p=>{const a=p.life/p.maxLife;ctx.globalAlpha=a;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size*a,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;});
+S.floatingTexts.forEach(t=>{const a=Math.min(t.life/20,1);ctx.globalAlpha=a;ctx.fillStyle=t.color;ctx.font=`bold ${t.size}px monospace`;
+ctx.textAlign='center';ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.strokeText(t.text,t.x,t.y);ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});
+if(S.flashAlpha>0){ctx.globalAlpha=S.flashAlpha;ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,ch);ctx.globalAlpha=1;}
+if(S.gachaAnim){const ga=S.gachaAnim;
+if(ga.phase==='darken'){ctx.globalAlpha=Math.min(ga.timer/30,.8);ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);ctx.globalAlpha=1;}
+else if(ga.phase==='spotlight'){ctx.globalAlpha=.85;ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);ctx.globalAlpha=1;
+const gr=ctx.createRadialGradient(cw/2,ch/2,0,cw/2,ch/2,100);gr.addColorStop(0,RARITY_COLORS[ga.cat.rarity]+'88');gr.addColorStop(1,'transparent');
+ctx.fillStyle=gr;ctx.fillRect(0,0,cw,ch);ctx.fillStyle='#fff';ctx.font='bold 18px monospace';ctx.textAlign='center';ctx.fillText('...!?',cw/2,ch/2+60);}
+else{ctx.globalAlpha=Math.max(0,.85-ga.timer/60);ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);ctx.globalAlpha=1;const col=RARITY_COLORS[ga.cat.rarity];
+ctx.shadowColor=col;ctx.shadowBlur=30;ctx.fillStyle=ga.cat.color;ctx.beginPath();ctx.arc(cw/2,ch/2,30,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.arc(cw/2,ch/2,60,0,Math.PI*2);ctx.stroke();
+ctx.fillStyle=col;ctx.font='bold 24px monospace';ctx.textAlign='center';ctx.fillText(`★ ${ga.cat.rarity} ★`,cw/2,ch/2-70);
+ctx.fillStyle='#fff';ctx.font='bold 16px monospace';ctx.fillText(ga.cat.name,cw/2,ch/2+70);ctx.font='14px monospace';ctx.fillText(ga.cat.charClass.toUpperCase(),cw/2,ch/2+90);}}
+ctx.restore();}
+
+function renderPvP(ctx,st,cw,ch){ctx.save();
+if(st.cameraShake>.5)ctx.translate((Math.random()-.5)*st.cameraShake*2,(Math.random()-.5)*st.cameraShake*2);
+ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,cw,ch);
+const g=ctx.createLinearGradient(0,0,0,ch);g.addColorStop(0,'#0d1117');g.addColorStop(.5,'#1a0a2e');g.addColorStop(1,'#151b2e');ctx.fillStyle=g;ctx.fillRect(0,0,cw,ch);
+ctx.strokeStyle='rgba(255,100,100,0.15)';ctx.lineWidth=2;ctx.setLineDash([8,8]);ctx.beginPath();ctx.moveTo(cw/2,40);ctx.lineTo(cw/2,ch-20);ctx.stroke();ctx.setLineDash([]);
+ctx.font='bold 12px monospace';ctx.textAlign='left';ctx.fillStyle='#6bc5ff';ctx.fillText(`🐱 ${playerName||'나'}`,8,22);
+ctx.textAlign='right';ctx.fillStyle='#ff6b6b';ctx.fillText(`🐱 ${pvpMatch?.opponentName||'???'}`,cw-8,22);
+ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='bold 15px monospace';ctx.fillText('⚔ VS ⚔',cw/2,24);
+const secs=Math.max(0,30-Math.floor(st.timer/60));ctx.font='10px monospace';ctx.fillStyle=secs<10?'#ff4444':'#666';ctx.fillText(`${secs}s`,cw/2,40);
+[...st.myUnits,...st.enemyUnits].forEach(u=>{if(u.dead){const a=Math.max(0,1-u.deathAnim/15);ctx.globalAlpha=a;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(u.x,u.y,u.size+u.deathAnim*2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;return;}
+const sh=u.hitAnim>0?(Math.random()-.5)*4:0;const dx=u.x+sh,dy=u.y;
+ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(dx,dy+u.size+2,u.size*.7,4,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=u.color;ctx.beginPath();ctx.arc(dx,dy,u.size,0,Math.PI*2);ctx.fill();
+ctx.beginPath();ctx.moveTo(dx-u.size*.7,dy-u.size*.5);ctx.lineTo(dx-u.size*.3,dy-u.size*1.2);ctx.lineTo(dx-u.size*.1,dy-u.size*.4);ctx.fill();
+ctx.beginPath();ctx.moveTo(dx+u.size*.7,dy-u.size*.5);ctx.lineTo(dx+u.size*.3,dy-u.size*1.2);ctx.lineTo(dx+u.size*.1,dy-u.size*.4);ctx.fill();
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(dx-5,dy-3,4,0,Math.PI*2);ctx.arc(dx+5,dy-3,4,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#111';ctx.beginPath();ctx.arc(dx-4,dy-3,2,0,Math.PI*2);ctx.arc(dx+6,dy-3,2,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle=u.isEnemy?'#ff4444':'#44aaff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(dx,dy,u.size+3,0,Math.PI*2);ctx.stroke();
+const bw=u.size*2;ctx.fillStyle='#333';ctx.fillRect(dx-bw/2,dy-u.size-10,bw,4);
+ctx.fillStyle=u.hp/u.maxHp>.5?'#44ff44':u.hp/u.maxHp>.25?'#ffaa00':'#ff4444';ctx.fillRect(dx-bw/2,dy-u.size-10,bw*(u.hp/u.maxHp),4);
+ctx.fillStyle='#ccc';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText(`${u.name} Lv.${u.level}`,dx,dy+u.size+14);});
+st.projectiles.forEach(p=>{p.trail.forEach((t,i)=>{ctx.globalAlpha=i/p.trail.length*.5;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(t.x,t.y,p.size*.6,0,Math.PI*2);ctx.fill();});
+ctx.globalAlpha=1;ctx.shadowColor=p.color;ctx.shadowBlur=8;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;});
+st.particles.forEach(p=>{ctx.globalAlpha=p.life/p.maxLife;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size*(p.life/p.maxLife),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;});
+st.floatingTexts.forEach(t=>{const a=Math.min(t.life/15,1);ctx.globalAlpha=a;ctx.fillStyle=t.color;ctx.font=`bold ${t.size}px monospace`;ctx.textAlign='center';ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.strokeText(t.text,t.x,t.y);ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});
+if(st.flashAlpha>0){ctx.globalAlpha=st.flashAlpha;ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,ch);ctx.globalAlpha=1;}
+if(st.finished&&st.timer>60){ctx.globalAlpha=.75;ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);ctx.globalAlpha=1;
+ctx.textAlign='center';ctx.font='bold 28px monospace';ctx.fillStyle=st.winner==='me'?'#ffd93d':'#ff4444';
+ctx.fillText(st.winner==='me'?'🏆 승리!':'💀 패배',cw/2,ch*.4);}
+ctx.restore();}
+
+// ============ CANVAS ============
+const canvas=document.getElementById('game');const ctx=canvas.getContext('2d');let frame=0;
+function resize(){const dpr=window.devicePixelRatio>1?2:1;canvas.width=canvas.clientWidth*dpr;canvas.height=canvas.clientHeight*dpr;}
+resize();window.addEventListener('resize',resize);
+let drag=null;
+function getPos(e){const r=canvas.getBoundingClientRect(),sx=canvas.width/r.width,sy=canvas.height/r.height;
+if(e.touches){const t=e.touches[0]||e.changedTouches[0];return{x:(t.clientX-r.left)*sx,y:(t.clientY-r.top)*sy};}
+return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};}
+function onDown(e){if(pvpStatus!=='idle')return;const p=getPos(e);
+for(const cat of S.cats.filter(c=>c.slot>=0)){const dx=p.x-cat.x,dy=p.y-cat.y;if(dx*dx+dy*dy<(cat.size+10)**2){cat.dragging=true;drag={id:cat.id,ox:dx,oy:dy};e.preventDefault();return;}}}
+function onMove(e){if(!drag||pvpStatus!=='idle')return;const p=getPos(e);const cat=S.cats.find(c=>c.id===drag.id);
+if(cat){const bm=canvas.height*.65;cat.x=Math.max(10,Math.min(canvas.width-10,p.x-drag.ox));cat.y=Math.max(BATTLE_Y+10,Math.min(bm-10,p.y-drag.oy));cat.targetX=cat.x;cat.targetY=cat.y;}e.preventDefault();}
+function onUp(){if(drag){const cat=S.cats.find(c=>c.id===drag.id);if(cat)cat.dragging=false;drag=null;}}
+canvas.addEventListener('mousedown',onDown);canvas.addEventListener('mousemove',onMove);canvas.addEventListener('mouseup',onUp);canvas.addEventListener('mouseleave',onUp);
+canvas.addEventListener('touchstart',onDown,{passive:false});canvas.addEventListener('touchmove',onMove,{passive:false});canvas.addEventListener('touchend',onUp);
+
+// ============ LOOP ============
+function loop(){
+  try{
+    frame++;
+    if(pvpBattle&&pvpStatus==='fighting'){
+      updatePvPBattle(pvpBattle,canvas.width,canvas.height);
+      renderPvP(ctx,pvpBattle,canvas.width,canvas.height);
+      if(pvpBattle.finished&&pvpBattle.timer>90){pvpStatus='result';showResultModal();updateUI();}
+      requestAnimationFrame(loop);return;
+    }
+    if(S.gachaAnim){S.gachaAnim.timer++;
+    if(S.gachaAnim.phase==='darken'&&S.gachaAnim.timer>30){S.gachaAnim.phase=S.gachaAnim.cat.rarity==='SSR'?'spotlight':'reveal';S.gachaAnim.timer=0;}
+    if(S.gachaAnim.phase==='spotlight'&&S.gachaAnim.timer>60){S.gachaAnim.phase='reveal';S.gachaAnim.timer=0;}
+    if(S.gachaAnim.phase==='reveal'&&S.gachaAnim.timer>90){S.gachaAnim=null;updateUI();}}
+    update(canvas.width,canvas.height,1);
+    render(ctx,canvas.width,canvas.height,frame);
+    if(frame%20===0)updateUI();
+  }catch(e){console.error(e);}
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ============ PVP FLOW ============
+async function startPvP(){
+  if(!playerId){showProfileModal();return;}
+  const team=serializeTeam();if(team.cats.length===0)return;
+  pvpStatus='searching';updateUI();
+  await saveDeck();
+  const db=await dbRead();
+  const opps=Object.values(db.decks||{}).filter(d=>d.playerId!==playerId);
+  setTimeout(()=>{
+    let opp=opps.length>0?opps[Math.floor(Math.random()*opps.length)]:null;
+    if(!opp){
+      const bc=['warrior','mage','gunner','bard'],br=['N','N','R','R','SR'];
+      const bcats=Array.from({length:2+Math.floor(Math.random()*2)},(_,i)=>{
+        const cls=bc[Math.floor(Math.random()*4)],rar=br[Math.floor(Math.random()*br.length)];
+        const c=createCat(cls,rar,i);
+        const lvl=Math.max(1,S.wave-1+Math.floor(Math.random()*2));
+        for(let l=1;l<lvl;l++){c.level++;c.baseAtk=Math.floor(c.baseAtk*1.15);c.maxHp=Math.floor(c.maxHp*1.1);c.hp=c.maxHp;recalcStats(c);}
+        return{charClass:c.charClass,rarity:c.rarity,level:c.level,atk:c.atk,maxHp:c.maxHp,name:c.name,color:c.color,equipment:{weapon:null,armor:null,accessory:null}};
+      });
+      opp={playerName:'냥봇#'+Math.floor(Math.random()*9999),team:{cats:bcats}};
+    }
+    pvpMatch={myTeam:team,opponentTeam:opp.team,opponentName:opp.playerName};
+    pvpBattle=initPvPBattle(team,opp.team,canvas.width,canvas.height);
+    pvpStatus='fighting';updateUI();
+  },1000);
+}
+
+// ============ MODALS ============
+function showProfileModal(){
+  document.getElementById('modalContainer').innerHTML=`
+  <div class="modal-bg">
+    <div class="modal">
+      <h3>🐱 닉네임 설정</h3>
+      <p style="font-size:10px;color:#888;margin-bottom:4px">랭킹에 표시될 닉네임을 설정하세요.</p>
+      <label>닉네임 (2~12자)</label>
+      <input id="pidInput" maxlength="12" placeholder="예: 고양이왕" value="${playerName||''}">
+      <div class="modal-btns">
+        <button onclick="window._saveProfile()">저장</button>
+        <button style="background:#333" onclick="document.getElementById('modalContainer').innerHTML=''">취소</button>
+      </div>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('pidInput')?.focus(),100);
+}
+window._saveProfile=function(){
+  const val=(document.getElementById('pidInput')?.value||'').trim();
+  if(val.length<2){alert('2자 이상 입력하세요.');return;}
+  playerName=val;playerId='p_'+val+'_'+Date.now().toString(36);
+  try{localStorage.setItem('meow_nick',val);localStorage.setItem('meow_pid',playerId);}catch(e){}
+  document.getElementById('modalContainer').innerHTML='';updateUI();
+};
+
+function showResultModal(){
+  const won=pvpBattle.winner==='me';const score=calcScore(pvpBattle);
+  document.getElementById('modalContainer').innerHTML=`
+  <div class="modal-bg">
+    <div class="modal">
+      <h3>${won?'🏆 승리!':'💀 패배'}</h3>
+      <div style="font-size:12px;color:#ffd93d;margin-bottom:2px">점수: ${score}pt</div>
+      <div style="font-size:10px;color:#888;margin-bottom:8px">vs ${pvpMatch.opponentName}</div>
+      <label>한마디 코멘트 (선택, 최대 60자)</label>
+      <textarea id="rankComment" maxlength="60" placeholder="예: 다음엔 진다 😤"></textarea>
+      <div class="modal-btns">
+        <button style="background:#1a5a8a" onclick="window._submitRank()">📊 랭킹 등록</button>
+        <button style="background:#444" onclick="window._skipRank()">건너뛰기</button>
+      </div>
+    </div>
+  </div>`;
+}
+window._submitRank=async function(){
+  const comment=(document.getElementById('rankComment')?.value||'').trim();
+  const won=pvpBattle.winner==='me';const score=calcScore(pvpBattle);
+  document.getElementById('modalContainer').innerHTML=`<div class="modal-bg"><div class="modal"><p style="text-align:center;padding:20px;color:#888;font-size:12px">저장 중... 🐱</p></div></div>`;
+  await saveRanking(won,comment,pvpMatch.opponentName,score);
+  if(won)S.gold+=100;
+  document.getElementById('modalContainer').innerHTML='';
+  pvpStatus='idle';pvpBattle=null;pvpMatch=null;
+  S.floatingTexts.push(mkText(canvas.width/2,80,won?'🏆 +100G!':'💀 파이팅!',won?'#ffd93d':'#ff8866',15));
+  updateUI();
+};
+window._skipRank=function(){
+  if(pvpBattle?.winner==='me')S.gold+=100;
+  document.getElementById('modalContainer').innerHTML='';
+  pvpStatus='idle';pvpBattle=null;pvpMatch=null;updateUI();
+};
+
+async function showRankingsModal(){
+  document.getElementById('modalContainer').innerHTML=`<div class="modal-bg"><div class="modal"><p style="text-align:center;padding:24px;color:#888;font-size:12px">랭킹 불러오는 중... 🐱</p></div></div>`;
+  const db=await dbRead();
+  const rankings=db.rankings||[];
+  const myRank=rankings.findIndex(r=>r.playerId===playerId);
+  let rows='';
+  if(!rankings.length){
+    rows='<div style="text-align:center;color:#555;font-size:11px;padding:24px">아직 랭킹이 없어요!<br>PvP 후 등록해보세요 🐱</div>';
+  } else {
+    rankings.slice(0,20).forEach((r,i)=>{
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      const cls=i===0?'r-gold':i===1?'r-silver':i===2?'r-bronze':r.playerId===playerId?'r-me':'';
+      const wr=r.wins+r.losses>0?Math.floor(r.wins/(r.wins+r.losses)*100):0;
+      const date=new Date(r.lastAt).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+      rows+=`<div class="rank-item ${cls}">
+        <div class="rank-header">
+          <span class="rank-num">${medal||(i+1)}</span>
+          <span class="rank-name">${r.playerName}${r.playerId===playerId?' 👈':''}</span>
+          <span class="rank-score">${r.totalScore}pt</span>
+        </div>
+        <div class="rank-detail">${r.wins}승 ${r.losses}패 · 승률${wr}% · ${date} · vs ${r.lastOpponent||'?'}</div>
+        ${r.lastComment?`<div class="rank-comment">"${r.lastComment}"</div>`:''}
+      </div>`;
+    });
+  }
+  document.getElementById('modalContainer').innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)document.getElementById('modalContainer').innerHTML=''">
+    <div class="modal">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <h3 style="flex:1">📊 글로벌 랭킹</h3>
+        ${myRank>=0?`<span style="font-size:10px;color:#6c3bd5">내 순위 #${myRank+1}</span>`:''}
+        <button style="background:#333;padding:3px 8px" onclick="document.getElementById('modalContainer').innerHTML=''">✕</button>
+      </div>
+      <div class="rank-list">${rows}</div>
+    </div>
+  </div>`;
+}
+
+// ============ UI ============
+let selectedSlot=null,selectedCat=null,showEquip=false;
+function updateUI(){
+  const topRow=document.getElementById('topRow');
+  const main=document.getElementById('mainPanel');
+  const eqP=document.getElementById('equipPanel');
+  const hasTeam=S.teamSlots.some(s=>s!==null);
+  if(pvpStatus==='idle'||pvpStatus==='result'){
+    topRow.innerHTML=`
+      <button style="background:${playerId?'#1a3a1a':'#5a2a10'};font-size:10px;padding:4px 8px" onclick="window._profileBtn()">
+        ${playerId?('🐱 '+playerName):'⚠️ 닉네임 설정'}
+      </button>
+      <button onclick="window._gacha()">🎲(${GACHA_COST}G)</button>
+      <button class="btn-eq" onclick="window._toggleEquip()">🎒(${S.inventory.length})</button>
+      <button class="btn-save" onclick="window._saveDeckBtn()" ${!playerId||!hasTeam?'disabled':''}>💾덱저장</button>
+      <button class="btn-pvp" onclick="window._pvpBtn()" ${!hasTeam?'disabled':''}>⚔️PvP</button>
+      <button class="btn-rank" onclick="window._rankBtn()">📊랭킹</button>
+      <span class="gold">💰${S.gold}G</span>
+      <span id="netSt" class="net">🟡</span>`;
+    main.style.display='';eqP.style.display=showEquip?'':'none';
+    if(showEquip)renderEquipUI();else{renderSlots();renderBench();}
+  } else if(pvpStatus==='searching'){
+    topRow.innerHTML=`<span class="pulse" style="font-weight:bold;font-size:12px">🔍 상대 검색 중...</span>
+      <button onclick="window._pvpCancel()" style="background:#555">✕</button>`;
+    main.innerHTML=`<div class="pvp-center"><div style="font-size:28px" class="pulse">⚔️</div>
+      <span style="color:#888;font-size:11px">상대 덱 불러오는 중...</span></div>`;
+    eqP.style.display='none';
+  } else if(pvpStatus==='fighting'){
+    topRow.innerHTML=`<span style="font-weight:bold;font-size:11px">⚔️ PvP 전투 중!</span>
+      <span style="font-size:10px;color:#888">vs ${pvpMatch?.opponentName||'?'}</span>`;
+    main.innerHTML=`<div class="pvp-center"><span style="font-size:10px;color:#333">전투 진행 중</span></div>`;
+    eqP.style.display='none';
+  }
+}
+function renderSlots(){
+  const main=document.getElementById('mainPanel');
+  let html='<div class="slots"><span class="slots-label">팀:</span>';
+  for(let i=0;i<4;i++){const cat=S.teamSlots[i];
+  if(cat){html+=`<div class="slot" onclick="window._slotClick(${i})" style="border-color:${selectedSlot===i?'#fff':RARITY_COLORS[cat.rarity]};${selectedSlot===i?'box-shadow:0 0 10px '+RARITY_COLORS[cat.rarity]:''}">
+  <span class="emoji">${CLASS_EMOJIS[cat.charClass]}</span><span class="lvl">Lv.${cat.level}</span><span class="stat">ATK:${cat.atk}</span>
+  <span class="lvup" onclick="event.stopPropagation();window._levelUp(${i})">⬆${LVL_COST*cat.level}G</span></div>`;}
+  else html+=`<div class="slot" onclick="window._slotClick(${i})" style="${selectedSlot!==null?'border-color:rgba(255,255,255,0.2)':''}"><span style="color:#444;font-size:18px">+</span></div>`;}
+  html+='</div>';
+  const ba=document.createElement('div');
+  main.innerHTML=html;main.appendChild(ba);ba.className='bench-area';ba.id='benchArea';renderBenchInto(ba);
+}
+function renderBench(){const ba=document.getElementById('benchArea');if(ba)renderBenchInto(ba);}
+function renderBenchInto(el){
+  const bc=S.roster.filter(c=>c.slot<0);
+  let html='<span class="bench-label">대기:</span><div class="bench">';
+  if(bc.length)bc.forEach(c=>{html+=`<div class="bench-cat" onclick="window._benchClick('${c.id}')" style="border-color:${selectedSlot!==null?'rgba(100,255,100,0.5)':RARITY_COLORS[c.rarity]+'55'}">
+  <span>${CLASS_EMOJIS[c.charClass]}</span><span style="font-size:7px">${c.rarity}</span></div>`;});
+  else html+='<span style="font-size:10px;color:#444">뽑기로 용병 모집!</span>';
+  html+='</div>';el.innerHTML=html;
+}
+function renderEquipUI(){
+  const eqP=document.getElementById('equipPanel');
+  let html='<div style="font-size:11px;font-weight:bold;margin-bottom:4px">장비 인벤토리';
+  if(selectedCat)html+=` <span style="font-size:10px;color:#2a5a3a">→ ${CLASS_EMOJIS[selectedCat.charClass]} ${selectedCat.name}</span>`;
+  html+='</div>';
+  if(selectedCat){html+='<div class="equip-slots">';
+  ['weapon','armor','accessory'].forEach(sl=>{const eq=selectedCat.equipment[sl];
+  html+=`<div class="equip-slot" onclick="window._unequip('${sl}')" style="${eq?'border-color:'+RARITY_COLORS[eq.rarity]:''}">
+  <span>${eq?eq.icon:EQUIP_ICONS[sl]}</span><span>${eq?eq.name:'없음'}</span></div>`;});html+='</div>';}
+  html+='<div class="inv-grid">';
+  if(S.inventory.length)S.inventory.forEach(eq=>{html+=`<div class="inv-item" onclick="window._equip('${eq.id}')" style="border-color:${RARITY_COLORS[eq.rarity]}88">
+  <span style="font-size:13px">${eq.icon}</span><span style="color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center">${eq.name}</span>
+  <span style="color:#888">${eq.atkBonus>0?'+'+eq.atkBonus+'⚔':''}${eq.hpBonus>0?' +'+eq.hpBonus+'♥':''}${eq.speedBonus>0?' +'+eq.speedBonus+'⚡':''}</span></div>`;});
+  else html+='<span style="font-size:11px;color:#444">장비 없음</span>';
+  html+='</div>';eqP.innerHTML=html;
+}
+
+// ============ HANDLERS ============
+window._gacha=function(){if(S.gold<GACHA_COST||S.gachaAnim)return;S.gold-=GACHA_COST;const{charClass,rarity}=rollGacha();
+const cat=createCat(charClass,rarity,-1);S.roster.push(cat);const es=S.teamSlots.findIndex(s=>s===null);
+if(es>=0){cat.slot=es;S.teamSlots[es]=cat;S.cats.push(cat);}S.gachaAnim={phase:'darken',timer:0,cat};updateUI();};
+window._toggleEquip=function(){showEquip=!showEquip;
+document.getElementById('mainPanel').style.display=showEquip?'none':'';
+document.getElementById('equipPanel').style.display=showEquip?'':'none';updateUI();};
+window._slotClick=function(i){const cat=S.teamSlots[i];
+if(cat){if(selectedSlot===i){cat.slot=-1;S.cats=S.cats.filter(c=>c.id!==cat.id);S.teamSlots[i]=null;selectedSlot=null;selectedCat=null;updateUI();return;}
+selectedSlot=i;selectedCat=cat;}
+else if(selectedSlot!==null){const mc=S.teamSlots[selectedSlot];if(mc){S.teamSlots[selectedSlot]=null;mc.slot=i;S.teamSlots[i]=mc;}selectedSlot=null;}
+updateUI();};
+window._benchClick=function(id){const cat=S.roster.find(c=>c.id===id);if(!cat)return;
+if(selectedSlot!==null){assignSlot(cat,selectedSlot);selectedSlot=null;}
+else{const es=S.teamSlots.findIndex(s=>s===null);if(es>=0)assignSlot(cat,es);}updateUI();};
+function assignSlot(cat,si){const old=S.teamSlots.findIndex(s=>s?.id===cat.id);if(old>=0)S.teamSlots[old]=null;
+const ex=S.teamSlots[si];if(ex){ex.slot=-1;S.cats=S.cats.filter(c=>c.id!==ex.id);}
+cat.slot=si;cat.targetX=0;cat.targetY=0;S.teamSlots[si]=cat;if(!S.cats.find(c=>c.id===cat.id))S.cats.push(cat);}
+window._levelUp=function(si){const cat=S.teamSlots[si];if(!cat)return;const cost=LVL_COST*cat.level;if(S.gold<cost)return;
+S.gold-=cost;cat.level++;cat.baseAtk=Math.floor(cat.baseAtk*1.15);cat.maxHp=Math.floor(cat.maxHp*1.1);cat.hp=cat.maxHp;cat.scaleAnim=1;recalcStats(cat);
+S.floatingTexts.push(mkText(cat.x,cat.y-30,'LEVEL UP!','#ffd93d',18));S.cameraShake=5;updateUI();};
+window._equip=function(id){if(!selectedCat)return;const eq=S.inventory.find(e=>e.id===id);if(!eq)return;
+const old=selectedCat.equipment[eq.slot];if(old)S.inventory.push(old);selectedCat.equipment[eq.slot]=eq;
+S.inventory=S.inventory.filter(e=>e.id!==eq.id);recalcStats(selectedCat);updateUI();};
+window._unequip=function(slot){if(!selectedCat)return;const eq=selectedCat.equipment[slot];if(!eq)return;
+S.inventory.push(eq);selectedCat.equipment[slot]=null;recalcStats(selectedCat);updateUI();};
+window._profileBtn=function(){showProfileModal();};
+window._saveDeckBtn=function(){saveDeck();};
+window._pvpBtn=function(){startPvP();};
+window._pvpCancel=function(){pvpStatus='idle';pvpMatch=null;pvpBattle=null;updateUI();};
+window._rankBtn=function(){showRankingsModal();};
+
+// ============ INIT ============
+updateUI();
+if(!playerId)setTimeout(()=>showProfileModal(),600);
+</script>
+</body>
+</html>
