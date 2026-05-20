@@ -1,0 +1,2737 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>생활 통합관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --lav: #ede9f7; --lav-mid: #d4ccea; --lav-acc: #8b73d4; --lav-dk: #6b52b8;
+  --blush: #fde8ee; --blush-acc: #e8729a;
+  --mint: #e3f5f0; --mint-acc: #4ab8a0;
+  --peach: #fff0e6; --peach-acc: #f0935a;
+  --sky: #e8f4fd; --sky-acc: #5a9fe0;
+  --text: #2d2640; --text2: #6b6080; --text3: #9d93b5;
+  --border: #e8e3f3; --white: #fff;
+  --sh: 0 2px 16px rgba(139,115,212,.09);
+  --sh-lg: 0 8px 32px rgba(139,115,212,.14);
+  --r: 14px; --rs: 10px; --rx: 6px;
+}
+body {
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  background: linear-gradient(135deg,#f5f0ff 0%,#fce8f3 45%,#e8f8f5 100%);
+  min-height: 100vh; color: var(--text);
+}
+#root { min-height: 100vh; }
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-thumb { background:var(--lav-mid); border-radius:3px; }
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pop { 0%{transform:scale(.95)} 60%{transform:scale(1.02)} 100%{transform:scale(1)} }
+.fade-in { animation: fadeIn .3s ease both; }
+
+/* ── LAYOUT ── */
+.app { max-width: 980px; margin: 0 auto; padding: 0 0 80px; }
+
+/* ── HEADER ── */
+.header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 16px 10px;
+}
+.logo {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg,var(--lav-acc),var(--blush-acc));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 10px rgba(139,115,212,.3);
+}
+.header-text { flex: 1; min-width: 0; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.header-sub { font-size: 11px; color: var(--text3); }
+.firebase-badge {
+  font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
+  background: #fff4e5; color: #e07d28; border: 1px solid #ffd8a8; white-space: nowrap;
+}
+/* ── HEADER IO LINKS ── */
+.header-io {
+  display: flex; align-items: center; gap: 0; flex-shrink: 0;
+  font-size: 11px; font-weight: 600;
+}
+.hio-btn {
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  color: var(--text3); padding: 4px 8px; transition: color .14s;
+  white-space: nowrap;
+}
+.hio-btn:hover { color: var(--text2); }
+.hio-btn.json { color: #b07800; }
+.hio-btn.json:hover { color: #8a5c00; }
+.hio-btn.xlsx-ex { color: #2e7d52; }
+.hio-btn.xlsx-ex:hover { color: #1e5c3a; }
+.hio-btn.xlsx-im { color: var(--sky-acc); }
+.hio-btn.xlsx-im:hover { color: #3a7fc0; }
+.hio-sep { color: var(--border); font-size: 12px; user-select: none; }
+
+/* ── TABS (top, compact) ── */
+.tab-bar {
+  display: flex; gap: 4px; padding: 6px 12px 0;
+  border-bottom: 2px solid var(--border); margin-bottom: 16px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border: none; background: none;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  color: var(--text3); cursor: pointer; white-space: nowrap;
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all .18s ease; border-radius: 0; flex-shrink: 0;
+}
+.tab-btn:hover { color: var(--text2); background: rgba(139,115,212,.06); border-radius: 8px 8px 0 0; }
+.tab-btn.t-inv.on { color: var(--lav-acc); border-bottom-color: var(--lav-acc); }
+.tab-btn.t-cos.on { color: var(--blush-acc); border-bottom-color: var(--blush-acc); }
+.tab-btn.t-clo.on { color: var(--mint-acc); border-bottom-color: var(--mint-acc); }
+.tab-btn.t-wsh.on { color: #e07d28; border-bottom-color: #e07d28; }
+/* hide label on very small screens */
+@media(max-width:360px){ .tab-label { display:none; } }
+
+/* ── SECTION ── */
+.section { padding: 0 12px; }
+
+/* ── INLINE STATS (타이틀 옆) ── */
+.istat { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.istat-item {
+  font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px;
+  background:rgba(139,115,212,.1); color:var(--text2); white-space:nowrap;
+}
+
+/* ── CARD ── */
+.card {
+  background: rgba(255,255,255,.88); backdrop-filter: blur(12px);
+  border-radius: var(--r); border: 1px solid rgba(255,255,255,.95);
+  box-shadow: var(--sh); padding: 16px; margin-bottom: 12px;
+}
+
+/* ── SECTION HEAD ── */
+.sec-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+.sec-title { font-size:15px; font-weight:700; display:flex; align-items:center; gap:6px; }
+.badge {
+  font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px;
+  background:var(--lav); color:var(--lav-acc);
+}
+
+/* ── FILTER ROW ── */
+.filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+.srch { position:relative; flex:1; min-width:150px; }
+.srch svg { position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; }
+.input-srch {
+  width:100%; padding:8px 10px 8px 32px; border:1.5px solid var(--border);
+  border-radius:var(--rs); font-family:inherit; font-size:12px;
+  background:white; color:var(--text); outline:none;
+}
+.input-srch:focus { border-color:var(--lav-acc); }
+.fselect {
+  padding:8px 12px; border:1.5px solid var(--border); border-radius:var(--rs);
+  font-family:inherit; font-size:12px; background:white; color:var(--text);
+  outline:none; cursor:pointer;
+}
+.fselect:focus { border-color:var(--lav-acc); }
+
+/* ── COLOR CHIPS ── */
+.color-chips { display:flex; gap:6px; overflow-x:auto; padding-bottom:10px; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; }
+.color-chips::-webkit-scrollbar { display:none; }
+.color-chip {
+  flex-shrink:0; padding:4px 11px; border-radius:20px; border:1.5px solid var(--border);
+  font-size:11px; font-weight:600; cursor:pointer; background:white; color:var(--text2);
+  transition:all .15s; white-space:nowrap; font-family:inherit;
+}
+.color-chip:hover { border-color:var(--lav-mid); }
+.color-chip.active { background:var(--lav-acc); color:white; border-color:var(--lav-acc); }
+
+/* ── TABLE ── */
+.tbl-wrap { overflow-x:auto; border-radius:var(--rs); }
+table { width:100%; border-collapse:collapse; min-width:540px; }
+thead tr { background:var(--lav); }
+th {
+  padding:9px 12px; text-align:left; font-size:11px; font-weight:700;
+  color:var(--lav-acc); white-space:nowrap; user-select:none;
+  border-bottom:2px solid var(--lav-mid);
+}
+th.sort { cursor:pointer; }
+th.sort:hover { color:var(--lav-dk); }
+.th-in { display:flex; align-items:center; gap:3px; }
+td {
+  padding:9px 12px; font-size:12px; color:var(--text);
+  border-bottom:1px solid var(--border); vertical-align:middle;
+}
+tr:last-child td { border-bottom:none; }
+tbody tr { transition:background .1s; }
+tbody tr:hover { background:rgba(237,233,247,.35); }
+
+/* ── PROGRESS ── */
+.prog { display:flex; align-items:center; gap:6px; min-width:100px; }
+.prog-bg { flex:1; height:6px; background:var(--lav-mid); border-radius:100px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:100px; transition:width .4s ease; }
+.prog-lbl { font-size:11px; font-weight:600; color:var(--text2); min-width:28px; }
+
+/* ── STARS ── */
+.stars { display:flex; gap:1px; }
+.star { font-size:13px; color:#f5c842; line-height:1; }
+.star.e { color:#e0dcea; }
+.star-input { display:flex; gap:2px; }
+.star-input button { background:none; border:none; cursor:pointer; font-size:20px; padding:1px; transition:transform .1s; line-height:1; }
+.star-input button:hover { transform:scale(1.2); }
+
+/* ── PILLS ── */
+.pill { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:600; }
+.p-grn { background:#e8f8f0; color:#3aaa76; }
+.p-red { background:var(--blush); color:var(--blush-acc); }
+.p-blu { background:var(--sky); color:var(--sky-acc); }
+.p-pur { background:var(--lav); color:var(--lav-acc); }
+.p-gry { background:#f2f0f7; color:var(--text3); }
+.p-org { background:var(--peach); color:var(--peach-acc); }
+.p-mnt { background:var(--mint); color:var(--mint-acc); }
+
+/* ── BUTTONS ── */
+.btn {
+  display:inline-flex; align-items:center; gap:5px; padding:8px 14px;
+  border-radius:var(--rs); font-family:inherit; font-size:12px; font-weight:600;
+  cursor:pointer; border:none; transition:all .16s; white-space:nowrap;
+}
+.btn:active { transform:scale(.97); }
+.b-pri { background:linear-gradient(135deg,var(--lav-acc),#a284e0); color:white; box-shadow:0 3px 10px rgba(139,115,212,.3); }
+.b-cos { background:linear-gradient(135deg,var(--blush-acc),#f093b3); color:white; box-shadow:0 3px 10px rgba(232,114,154,.3); }
+.b-clo { background:linear-gradient(135deg,var(--mint-acc),#6ed4be); color:white; box-shadow:0 3px 10px rgba(74,184,160,.3); }
+.b-trv { background:linear-gradient(135deg,var(--sky-acc),#7eb9ec); color:white; box-shadow:0 3px 10px rgba(90,159,224,.3); }
+.b-ghost { background:var(--lav); color:var(--lav-acc); border:1.5px solid var(--lav-mid); }
+.b-ghost:hover { background:var(--lav-mid); }
+.b-danger { background:#fff0f0; color:#e05757; border:1.5px solid #fdd5d5; }
+.b-danger:hover { background:#ffe0e0; }
+.btn-sm { padding:5px 10px; font-size:11px; border-radius:var(--rx); }
+.btn-ic { padding:6px; border-radius:var(--rx); background:var(--lav); color:var(--lav-acc); border:1.5px solid var(--lav-mid); }
+.btn-ic:hover { background:var(--lav-mid); }
+
+/* ── MODAL ── */
+.overlay {
+  position:fixed; inset:0; background:rgba(40,30,70,.35); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px;
+  animation:fadeIn .2s ease;
+}
+.modal {
+  background:white; border-radius:18px; box-shadow:0 16px 64px rgba(40,30,70,.22);
+  width:100%; max-width:500px; max-height:92vh; overflow-y:auto;
+  animation:pop .22s ease;
+}
+.modal-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 20px 14px; border-bottom:1.5px solid var(--border);
+  position:sticky; top:0; background:white; z-index:1; border-radius:18px 18px 0 0;
+}
+.modal-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:7px; }
+.modal-body { padding:16px 20px 20px; }
+.modal-ft { padding:0 20px 18px; display:flex; gap:8px; justify-content:flex-end; }
+
+/* ── FORM ── */
+.fg2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.fg1 { display:grid; grid-template-columns:1fr; gap:12px; }
+.fg { display:flex; flex-direction:column; gap:4px; }
+.fg.full { grid-column:1/-1; }
+label { font-size:11px; font-weight:600; color:var(--text2); }
+.inp,.txta,.sel {
+  padding:9px 11px; border:1.5px solid var(--border); border-radius:var(--rs);
+  font-family:inherit; font-size:12px; color:var(--text); outline:none;
+  transition:border .14s,box-shadow .14s; background:white;
+}
+.inp:focus,.txta:focus,.sel:focus { border-color:var(--lav-acc); box-shadow:0 0 0 3px rgba(139,115,212,.1); }
+.txta { resize:vertical; min-height:72px; }
+
+/* ── TOGGLE PAIR ── */
+.tog-wrap { display:flex; border:1.5px solid var(--border); border-radius:var(--rs); overflow:hidden; }
+.tog {
+  flex:1; padding:8px 10px; border:none; background:white; font-family:inherit;
+  font-size:12px; cursor:pointer; transition:all .14s; font-weight:500; color:var(--text2);
+}
+.tog+.tog { border-left:1.5px solid var(--border); }
+.tog.t-yes { background:#e8f8f0; color:#3aaa76; font-weight:700; }
+.tog.t-no  { background:var(--blush); color:var(--blush-acc); font-weight:700; }
+
+/* ── DISPOSAL ── */
+.disp-hd {
+  display:flex; align-items:center; gap:8px; padding:12px 16px;
+  background:var(--blush); cursor:pointer; user-select:none;
+}
+.disp-title { font-size:13px; font-weight:700; color:var(--blush-acc); flex:1; }
+.disp-body { padding:12px; background:#fff7f9; }
+
+/* ── EMPTY ── */
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:44px 20px; gap:10px; color:var(--text3); }
+.empty p { font-size:13px; }
+
+/* ── ROW ACTIONS ── */
+.ra { display:flex; gap:3px; }
+
+/* ── CLOSET GRID ── */
+.clo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+.clo-card {
+  background:white; border-radius:var(--r); border:1.5px solid var(--border);
+  padding:14px; transition:all .18s; animation:fadeIn .3s ease;
+}
+.clo-card:hover { box-shadow:var(--sh-lg); transform:translateY(-1px); border-color:var(--lav-mid); }
+.clo-ch { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px; }
+.clo-ct { font-size:14px; font-weight:700; }
+.clo-cs { font-size:11px; color:var(--text3); margin-top:2px; }
+.clo-dr { display:flex; gap:5px; align-items:flex-start; margin-bottom:6px; }
+.clo-dl { font-size:10px; font-weight:600; color:var(--text3); min-width:38px; }
+.clo-dv { font-size:11px; color:var(--text2); flex:1; }
+
+/* ── TRAVEL ── */
+.trip-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; }
+.trip-card {
+  background:white; border-radius:var(--r); border:1.5px solid var(--border);
+  padding:16px; transition:all .18s; cursor:pointer; animation:fadeIn .3s ease;
+}
+.trip-card:hover { box-shadow:var(--sh-lg); transform:translateY(-1px); border-color:#b8d9f5; }
+.trip-card.selected { border-color:var(--sky-acc); box-shadow:0 0 0 3px rgba(90,159,224,.12); }
+.trip-name { font-size:15px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.trip-dest { font-size:12px; color:var(--text2); display:flex; align-items:center; gap:4px; margin-bottom:8px; }
+.trip-dates { font-size:11px; color:var(--text3); margin-bottom:10px; }
+.trip-prog-row { display:flex; align-items:center; gap:6px; }
+.trip-detail {
+  background:white; border-radius:var(--r); border:1.5px solid var(--border);
+  padding:18px; margin-bottom:12px; animation:fadeIn .25s ease;
+}
+.trip-detail-title { font-size:14px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+.check-list { display:flex; flex-direction:column; gap:6px; }
+.check-item {
+  display:flex; align-items:center; gap:8px; padding:8px 10px;
+  background:var(--lav); border-radius:var(--rx); transition:background .12s;
+}
+.check-item.done { background:#f0fdf5; }
+.check-item input[type=checkbox] { accent-color:var(--lav-acc); width:15px; height:15px; cursor:pointer; flex-shrink:0; }
+.check-item label { font-size:12px; cursor:pointer; flex:1; font-weight:400; color:var(--text); }
+.check-item.done label { text-decoration:line-through; color:var(--text3); }
+.check-add { display:flex; gap:6px; margin-top:8px; }
+.budget-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.budget-item { display:flex; flex-direction:column; gap:2px; flex:1; min-width:100px; }
+.budget-lbl { font-size:10px; color:var(--text3); font-weight:600; }
+.budget-val { font-size:18px; font-weight:700; color:var(--text); }
+
+/* ── IMAGE ── */
+.img-thumb {
+  width:44px; height:44px; border-radius:var(--rx); object-fit:cover;
+  cursor:pointer; border:1.5px solid var(--border); transition:transform .15s;
+  flex-shrink:0;
+}
+.img-thumb:hover { transform:scale(1.08); border-color:var(--lav-acc); }
+.img-upload-btn {
+  display:inline-flex; align-items:center; gap:5px; padding:7px 12px;
+  border:2px dashed var(--lav-mid); border-radius:var(--rs); cursor:pointer;
+  font-size:12px; color:var(--text3); background:var(--lav); transition:all .15s;
+  font-family:inherit; font-weight:500;
+}
+.img-upload-btn:hover { border-color:var(--lav-acc); color:var(--lav-acc); background:rgba(139,115,212,.1); }
+.img-preview-wrap { position:relative; display:inline-block; }
+.img-preview-wrap img { width:100%; max-height:200px; object-fit:cover; border-radius:var(--rs); border:1.5px solid var(--border); }
+.img-del-btn {
+  position:absolute; top:-6px; right:-6px; width:20px; height:20px;
+  border-radius:50%; background:#e05757; color:white; border:none;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700;
+}
+/* 라이트박스 */
+.lightbox {
+  position:fixed; inset:0; background:rgba(10,5,30,.88); z-index:2000;
+  display:flex; align-items:center; justify-content:center;
+  animation:fadeIn .2s ease; padding:20px;
+}
+.lightbox img { max-width:100%; max-height:90vh; border-radius:var(--r); box-shadow:0 16px 64px rgba(0,0,0,.5); }
+.lightbox-close {
+  position:absolute; top:16px; right:16px; background:rgba(255,255,255,.15);
+  border:none; color:white; width:36px; height:36px; border-radius:50%;
+  cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center;
+}
+/* 카드 이미지 커버 */
+.card-img-cover {
+  width:100%; height:140px; object-fit:cover; border-radius:var(--rs);
+  margin-bottom:10px; cursor:pointer; border:1px solid var(--border);
+}
+/* 여행 카드 이미지 그라데이션 */
+.trip-card-img-wrap {
+  position:relative; width:100%; height:160px;
+  border-radius:var(--rs); overflow:hidden; margin-bottom:10px; cursor:pointer;
+}
+.trip-card-img-wrap img {
+  width:100%; height:100%; object-fit:cover; display:block;
+}
+.trip-card-img-wrap::after {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(20,10,50,.72) 100%);
+  border-radius:var(--rs);
+}
+.trip-card-img-overlay {
+  position:absolute; bottom:0; left:0; right:0; padding:10px 12px;
+  z-index:1; pointer-events:none;
+}
+.trip-card-img-name { font-size:15px; font-weight:700; color:white; text-shadow:0 1px 4px rgba(0,0,0,.4); }
+.trip-card-img-dest { font-size:11px; color:rgba(255,255,255,.82); display:flex; align-items:center; gap:3px; margin-top:2px; }
+
+/* ── SORT ICON ── */
+.si { font-size:9px; }
+
+/* ── COLOR CIRCLE CHIPS ── */
+.color-circle-row { display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:10px; -webkit-overflow-scrolling:touch; }
+.color-circle-row::-webkit-scrollbar { display:none; }
+.color-circle-btn {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  background:none; border:none; cursor:pointer; padding:2px 4px; flex-shrink:0;
+  font-family:inherit;
+}
+.color-circle {
+  width:28px; height:28px; border-radius:50%;
+  border:2px solid transparent; transition:all .15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.10);
+}
+.color-circle-btn:hover .color-circle { transform:scale(1.12); }
+.color-circle-btn.active .color-circle { border-color: var(--text); box-shadow: 0 0 0 2px white, 0 0 0 4px var(--text); }
+.color-circle-lbl { font-size:9px; font-weight:600; color:var(--text3); white-space:nowrap; }
+
+/* import modal */
+.imp-section { margin-bottom:14px; }
+.imp-title { font-size:12px; font-weight:700; color:var(--text2); margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+.imp-desc { font-size:11px; color:var(--text3); line-height:1.6; }
+.imp-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
+.imp-row:last-child { border-bottom:none; }
+.imp-sheet { font-size:12px; font-weight:600; flex:1; }
+.imp-count { font-size:11px; color:var(--text3); }
+.imp-ok { font-size:11px; color:#3aaa76; font-weight:600; }
+.imp-err { font-size:11px; color:var(--blush-acc); }
+.drop-zone {
+  border:2px dashed var(--lav-mid); border-radius:var(--r); padding:28px 20px;
+  text-align:center; color:var(--text3); cursor:pointer; transition:all .15s;
+  background:var(--lav);
+}
+.drop-zone:hover,.drop-zone.drag { border-color:var(--lav-acc); background:rgba(139,115,212,.08); color:var(--lav-acc); }
+.drop-zone p { font-size:13px; margin-top:8px; font-weight:500; }
+.drop-zone small { font-size:11px; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:480px) {
+  .fg2 { grid-template-columns:1fr; }
+  .clo-grid,.trip-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+// ═══════════════════════════════════════════════════════════════════
+// FIREBASE LAYER
+// ═══════════════════════════════════════════════════════════════════
+const FB_CONFIG_KEY = '__fb_config_v1';
+const FB_DEFAULT_AUTH = 'email'; // 'email' or 'none'
+
+// Firebase 초기화 (한 번만)
+let __fbApp = null, __fbDb = null, __fbAuth = null;
+const initFirebase = (config) => {
+  if (__fbApp) return { app: __fbApp, db: __fbDb, auth: __fbAuth };
+  try {
+    __fbApp = firebase.initializeApp(config);
+    __fbDb = firebase.firestore();
+    __fbAuth = firebase.auth();
+    // 오프라인 캐시 활성화 (탭당 1회만 가능)
+    try { __fbDb.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
+    return { app: __fbApp, db: __fbDb, auth: __fbAuth };
+  } catch (e) {
+    console.error('Firebase init error:', e);
+    return null;
+  }
+};
+
+// 저장된 config 읽기
+const getStoredFbConfig = () => {
+  try { const s = localStorage.getItem(FB_CONFIG_KEY); return s ? JSON.parse(s) : null; }
+  catch { return null; }
+};
+
+// 부팅 시 자동 초기화
+const __bootCfg = getStoredFbConfig();
+if (__bootCfg) initFirebase(__bootCfg);
+
+// Firebase auth 상태 훅
+const useFirebaseAuth = () => {
+  const [user, setUser] = useState(__fbAuth?.currentUser || null);
+  const [ready, setReady] = useState(false);
+  const [enabled, setEnabled] = useState(!!__fbAuth);
+  useEffect(() => {
+    if (!__fbAuth) { setReady(true); return; }
+    const unsub = __fbAuth.onAuthStateChanged(u => { setUser(u); setReady(true); });
+    return unsub;
+  }, [enabled]);
+  return { user, ready, enabled, setEnabled };
+};
+
+// 현재 모드: 'firebase' (signed in) | 'local' (localStorage only)
+const getMode = (user) => (user && __fbDb) ? 'firebase' : 'local';
+
+// ═══════════════════════════════════════════════════════════════════
+// DATA LAYER — localStorage OR Firebase Firestore (signed-in mode)
+// ═══════════════════════════════════════════════════════════════════
+const useData = (key, initial) => {
+  const auth = useFirebaseAuth();
+  const mode = getMode(auth.user);
+  const [val, setVal] = useState(() => {
+    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : initial; } catch { return initial; }
+  });
+  const skipNextWrite = useRef(false);
+
+  // Firestore 실시간 구독
+  useEffect(() => {
+    if (mode !== 'firebase' || !auth.user) return;
+    const ref = __fbDb.collection('users').doc(auth.user.uid).collection('data').doc(key);
+    const unsub = ref.onSnapshot(snap => {
+      if (snap.exists) {
+        const remote = snap.data().items || initial;
+        skipNextWrite.current = true;
+        setVal(remote);
+        try { localStorage.setItem(key, JSON.stringify(remote)); } catch {}
+      } else {
+        // 원격에 없으면 로컬 데이터를 업로드 (최초 마이그레이션)
+        const localData = (() => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; } })();
+        if (Array.isArray(localData) && localData.length > 0) {
+          ref.set({ items: localData, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+      }
+    }, err => console.error('Firestore subscribe error:', err));
+    return unsub;
+  }, [mode, auth.user, key]);
+
+  const set = useCallback(v => {
+    setVal(v);
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
+    if (mode === 'firebase' && auth.user && !skipNextWrite.current) {
+      const ref = __fbDb.collection('users').doc(auth.user.uid).collection('data').doc(key);
+      ref.set({ items: v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+         .catch(e => console.error('Firestore write error:', e));
+    }
+    skipNextWrite.current = false;
+  }, [key, mode, auth.user]);
+
+  return [val, set];
+};
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+const today = () => new Date().toISOString().slice(0, 10);
+
+// ── Icon helper ──────────────────────────────────────────────────
+const Icon = ({ name, size = 14, color }) => {
+  const ref = React.useRef(null);
+  useEffect(() => {
+    if (!ref.current || !window.lucide) return;
+    ref.current.innerHTML = '';
+    const el = lucide.createElement(lucide[name] || lucide.HelpCircle);
+    el.setAttribute('width', size); el.setAttribute('height', size);
+    if (color) el.setAttribute('stroke', color);
+    ref.current.appendChild(el);
+  }, [name, size, color]);
+  return <span ref={ref} style={{ display:'inline-flex', alignItems:'center', flexShrink:0 }} />;
+};
+
+// ── Shared components ────────────────────────────────────────────
+const Stars = ({ v = 0 }) => (
+  <div className="stars">
+    {[1,2,3,4,5].map(i => <span key={i} className={`star${i > v ? ' e' : ''}`}>★</span>)}
+  </div>
+);
+const StarInput = ({ value, onChange }) => (
+  <div className="star-input">
+    {[1,2,3,4,5].map(i => (
+      <button key={i} type="button" onClick={() => onChange(i)}>
+        <span style={{ color: i <= value ? '#f5c842' : '#e0dcea' }}>★</span>
+      </button>
+    ))}
+  </div>
+);
+const ProgressBar = ({ value, accent }) => {
+  const pct = Math.max(0, Math.min(100, Number(value) || 0));
+  const color = accent || (pct > 60 ? '#4ab8a0' : pct > 25 ? '#f5c842' : '#e8729a');
+  return (
+    <div className="prog">
+      <div className="prog-bg"><div className="prog-fill" style={{ width:`${pct}%`, background:color }} /></div>
+      <span className="prog-lbl">{pct}%</span>
+    </div>
+  );
+};
+const SortIco = ({ dir }) => <span className="si" style={{ color: dir ? 'var(--lav-dk)' : 'var(--text3)' }}>{dir==='asc'?'▲':dir==='desc'?'▼':'⇅'}</span>;
+
+const Modal = ({ open, onClose, title, accent='b-pri', onSave, children }) => {
+  if (!open) return null;
+  return (
+    <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-hd">
+          <span className="modal-title">{title}</span>
+          <button className="btn btn-ic btn-sm" onClick={onClose}><Icon name="X" size={13} /></button>
+        </div>
+        <div className="modal-body">{children}</div>
+        <div className="modal-ft">
+          <button className="btn b-ghost" onClick={onClose}>취소</button>
+          <button className={`btn ${accent}`} onClick={onSave}>저장</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Color chip filter ─────────────────────────────────────────────
+// 화장품 전용 색상 칩
+const COS_COLOR_FILTERS = [
+  { key:'pink',  label:'핑크',   match:['핑크','pink','rose','로즈','코랄','coral'] },
+  { key:'red',   label:'레드',   match:['레드','red','립레드','버건디','burgundy','딥레드'] },
+  { key:'white', label:'화이트', match:['화이트','white','아이보리','ivory','밝은','light'] },
+  { key:'beige', label:'베이지', match:['베이지','beige','누드','nude','피치','peach'] },
+  { key:'orange',label:'오렌지', match:['오렌지','orange','어스','earth','테라코타','terra'] },
+  { key:'X',     label:'미입력', match:[] },
+];
+
+// 옷장 전용 색상 칩
+const CLO_COLOR_FILTERS = [
+  { key:'white',  label:'화이트', match:['화이트','white','아이보리','ivory','크림','cream'] },
+  { key:'blue',   label:'블루',   match:['블루','blue','스카이','sky','하늘','인디고','indigo'] },
+  { key:'yellow', label:'옐로우', match:['옐로우','yellow','노란','머스타드','mustard'] },
+  { key:'black',  label:'블랙',   match:['블랙','black','차콜','charcoal'] },
+  { key:'beige',  label:'베이지', match:['베이지','beige','누드','nude','아이보리','ivory','크림','cream'] },
+  { key:'gray',   label:'그레이', match:['그레이','gray','grey','회색','라이트그레이'] },
+  { key:'navy',   label:'네이비', match:['네이비','navy','짙은 블루','다크블루'] },
+  { key:'other',  label:'기타',   match:['그린','green','퍼플','purple','브라운','brown','레드','red','핑크','pink','오렌지','orange','버건디'] },
+  { key:'mix',    label:'믹스',   match:['믹스','mix','혼합','패턴','stripe','스트라이프','체크','check','플로럴','floral'] },
+  { key:'X',      label:'미입력', match:[] },
+];
+
+const matchesColorFilter = (val, filter) => {
+  if (filter.key === 'X') return !val || val.trim() === '';
+  return filter.match.some(m => val.toLowerCase().includes(m.toLowerCase()));
+};
+
+const matchesColorFilterWithTag = (item, colorField, filterKey, filters) => {
+  if (filterKey === 'X') return !item.colorTag && (!item[colorField] || item[colorField].trim() === '');
+  if (item.colorTag) return item.colorTag === filterKey;
+  const f = filters.find(f=>f.key===filterKey);
+  if (!f) return false;
+  return matchesColorFilter(item[colorField]||'', f);
+};
+
+// 범용 ColorChips (기존 호환)
+const COLOR_KW = ['블랙','화이트','베이지','그레이','네이비','블루','레드','핑크','옐로우','그린','브라운','퍼플','오렌지','코랄','누드'];
+const ColorChips = ({ items, field, active, onSelect }) => {
+  const found = useMemo(() => {
+    const set = new Set();
+    items.forEach(i => {
+      const val = (i[field] || '').toLowerCase();
+      COLOR_KW.forEach(kw => { if (val.includes(kw.toLowerCase())) set.add(kw); });
+    });
+    return [...set];
+  }, [items, field]);
+  if (!found.length) return null;
+  return (
+    <div className="color-chips" style={{ marginBottom: 10 }}>
+      <button className={`color-chip ${active===''?'active':''}`} onClick={() => onSelect('')}>전체</button>
+      {found.map(kw => (
+        <button key={kw} className={`color-chip ${active===kw?'active':''}`} onClick={() => onSelect(active===kw?'':kw)}>
+          {kw}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// 컬러 서클 칩 (화장품/옷장 전용)
+const COLOR_CIRCLE_DEFS = {
+  cos: [
+    { key:'pink',   label:'핑크',   color:'#f4a0b5' },
+    { key:'red',    label:'레드',   color:'#d94040' },
+    { key:'white',  label:'화이트', color:'#f5f0ee', border:'#ddd' },
+    { key:'beige',  label:'베이지', color:'#d9b99b' },
+    { key:'orange', label:'오렌지', color:'#f07040' },
+    { key:'X',      label:'미입력', color:'#e8e3f3', border:'#c4bedd', textColor:'#9d93b5' },
+  ],
+  clo: [
+    { key:'white',  label:'화이트', color:'#f5f0ee', border:'#ddd' },
+    { key:'blue',   label:'블루',   color:'#5a9fe0' },
+    { key:'yellow', label:'옐로우', color:'#f5c842' },
+    { key:'black',  label:'블랙',   color:'#2d2640' },
+    { key:'beige',  label:'베이지', color:'#d9b99b' },
+    { key:'gray',   label:'그레이', color:'#9d93b5' },
+    { key:'navy',   label:'네이비', color:'#2c3e70' },
+    { key:'other',  label:'기타',   color:'linear-gradient(135deg,#f4a0b5,#a0c4f4,#a8e6cf)', isGradient:true },
+    { key:'mix',    label:'믹스',   color:'linear-gradient(135deg,#f5c842,#f07040,#e8729a)', isGradient:true },
+    { key:'X',      label:'미입력', color:'#e8e3f3', border:'#c4bedd', textColor:'#9d93b5' },
+  ],
+};
+
+const ColorCircleChips = ({ type, active, onSelect }) => {
+  const defs = COLOR_CIRCLE_DEFS[type] || [];
+  return (
+    <div className="color-circle-row" style={{marginBottom:10}}>
+      {/* 전체 버튼 */}
+      <button className={`color-circle-btn ${active===''?'active':''}`} onClick={()=>onSelect('')}>
+        <div className="color-circle" style={{
+          background:'linear-gradient(135deg,#f4a0b5 0%,#f5c842 33%,#5a9fe0 66%,#4ab8a0 100%)',
+          borderColor: active===''?'var(--text)':'transparent',
+          boxShadow: active===''?'0 0 0 2px white, 0 0 0 4px #666':'0 1px 4px rgba(0,0,0,.10)',
+        }} />
+        <span className="color-circle-lbl" style={{color:active===''?'var(--text)':'var(--text3)'}}>전체</span>
+      </button>
+      {defs.map(f=>(
+        <button key={f.key} className={`color-circle-btn ${active===f.key?'active':''}`} onClick={()=>onSelect(active===f.key?'':f.key)}>
+          <div className="color-circle" style={{
+            background: f.isGradient ? f.color : f.color,
+            border: active===f.key ? '2px solid var(--text)' : `2px solid ${f.border||'transparent'}`,
+            boxShadow: active===f.key ? '0 0 0 2px white, 0 0 0 4px #555' : '0 1px 4px rgba(0,0,0,.12)',
+          }} />
+          <span className="color-circle-lbl" style={{color:active===f.key?'var(--text)':f.textColor||'var(--text3)'}}>{f.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// IMAGE DB — IndexedDB (local) + Firestore (cloud) 하이브리드
+// 모드 자동 선택: 로그인 상태면 Firestore, 아니면 IndexedDB
+// ═══════════════════════════════════════════════════════════════════
+
+// 이미지 압축 (Firestore 1MB 제한 대응)
+const compressImage = (file, maxWidth=1280, quality=0.82) => new Promise((res, rej) => {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = h * maxWidth / w; w = maxWidth; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      // JPEG로 변환하여 base64 반환
+      let dataUrl = canvas.toDataURL('image/jpeg', quality);
+      // 750KB 넘으면 더 압축
+      if (dataUrl.length > 750000) {
+        dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      }
+      if (dataUrl.length > 750000) {
+        canvas.width = w*0.8; canvas.height = h*0.8;
+        canvas.getContext('2d').drawImage(img, 0, 0, w*0.8, h*0.8);
+        dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      }
+      res(dataUrl);
+    };
+    img.onerror = rej;
+    img.src = e.target.result;
+  };
+  reader.onerror = rej;
+  reader.readAsDataURL(file);
+});
+
+// 현재 Firebase 사용자 가져오기 (동기)
+const getFbUser = () => __fbAuth?.currentUser || null;
+
+const ImageDB = (() => {
+  let _db = null;
+  const open = () => new Promise((res, rej) => {
+    if (_db) return res(_db);
+    const req = indexedDB.open('LifeManagerImgs', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('imgs', { keyPath:'id' });
+    req.onsuccess = e => { _db = e.target.result; res(_db); };
+    req.onerror = rej;
+  });
+
+  // ── IndexedDB 기본 동작 ──
+  const idbSave = async (id, base64) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('imgs','readwrite');
+      tx.objectStore('imgs').put({ id, base64 });
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  };
+  const idbGet = async (id) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('imgs','readonly');
+      const req = tx.objectStore('imgs').get(id);
+      req.onsuccess = e => res(e.target.result?.base64 || null);
+      req.onerror = rej;
+    });
+  };
+  const idbDel = async (id) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('imgs','readwrite');
+      tx.objectStore('imgs').delete(id);
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  };
+  const idbGetAll = async () => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('imgs','readonly');
+      const req = tx.objectStore('imgs').getAll();
+      req.onsuccess = e => res(e.target.result || []);
+      req.onerror = rej;
+    });
+  };
+  const idbSaveAll = async (entries) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('imgs','readwrite');
+      entries.forEach(e => tx.objectStore('imgs').put(e));
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  };
+
+  // ── Firestore 동작 ──
+  const fsRef = (id) => {
+    const user = getFbUser();
+    if (!user || !__fbDb) return null;
+    return __fbDb.collection('users').doc(user.uid).collection('images').doc(id);
+  };
+
+  return {
+    async save(id, base64) {
+      // 로컬 IndexedDB에 항상 저장 (캐시 + 오프라인)
+      await idbSave(id, base64);
+      // 로그인 중이면 Firestore에도 저장
+      const ref = fsRef(id);
+      if (ref) {
+        try { await ref.set({ base64, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+        catch(e) { console.error('Image FS save error:', e); }
+      }
+    },
+    async get(id) {
+      // 우선 IndexedDB에서 가져오기
+      const local = await idbGet(id);
+      if (local) return local;
+      // 없으면 Firestore 조회
+      const ref = fsRef(id);
+      if (ref) {
+        try {
+          const snap = await ref.get();
+          if (snap.exists) {
+            const b64 = snap.data().base64;
+            if (b64) { idbSave(id, b64); return b64; }
+          }
+        } catch(e) { console.error('Image FS get error:', e); }
+      }
+      return null;
+    },
+    async del(id) {
+      await idbDel(id);
+      const ref = fsRef(id);
+      if (ref) { try { await ref.delete(); } catch(e) {} }
+    },
+    async getAll() { return idbGetAll(); },
+    async saveAll(entries) {
+      await idbSaveAll(entries);
+      // Firestore 일괄 업로드는 비용 부담 있으므로 로컬만
+    }
+  };
+})();
+
+// 파일 → base64 (압축 적용)
+const fileToBase64 = compressImage;
+
+// ── useImage hook ───────────────────────────────────────────────
+const useImage = (itemId) => {
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    if (!itemId) return;
+    ImageDB.get(itemId).then(v => setSrc(v || null));
+  }, [itemId]);
+  const save = useCallback(async (file) => {
+    const b64 = await fileToBase64(file);
+    await ImageDB.save(itemId, b64);
+    setSrc(b64);
+  }, [itemId]);
+  const remove = useCallback(async () => {
+    await ImageDB.del(itemId);
+    setSrc(null);
+  }, [itemId]);
+  return { src, save, remove };
+};
+
+// ── Lightbox ────────────────────────────────────────────────────
+const Lightbox = ({ src, onClose }) => {
+  useEffect(() => {
+    const h = e => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+  if (!src) return null;
+  return (
+    <div className="lightbox" onClick={onClose}>
+      <button className="lightbox-close" onClick={onClose}>✕</button>
+      <img src={src} alt="" onClick={e => e.stopPropagation()} />
+    </div>
+  );
+};
+
+// ── ImageThumb — 테이블/카드 썸네일 ───────────────────────────
+const ImageThumb = ({ itemId, onOpen, className }) => {
+  const { src } = useImage(itemId);
+  if (!src) return null;
+  return <img className={className || 'img-thumb'} src={src} alt="" onClick={() => onOpen(src)} />;
+};
+
+// ── ImageUploadField — 모달 내 이미지 업로드 UI ───────────────
+const ImageUploadField = ({ itemId }) => {
+  const { src, save, remove } = useImage(itemId);
+  const [lb, setLb] = useState(false);
+  const ref = React.useRef(null);
+  const onChange = async e => {
+    const f = e.target.files[0];
+    if (f) await save(f);
+    e.target.value = '';
+  };
+  return (
+    <div>
+      {src ? (
+        <div className="img-preview-wrap">
+          <img src={src} alt="" onClick={() => setLb(true)} style={{cursor:'pointer'}} />
+          <button className="img-del-btn" onClick={remove} title="삭제">✕</button>
+        </div>
+      ) : (
+        <button type="button" className="img-upload-btn" onClick={() => ref.current.click()}>
+          <Icon name="Camera" size={14} />사진 추가
+        </button>
+      )}
+      <input ref={ref} type="file" accept="image/*" style={{display:'none'}} onChange={onChange} />
+      {lb && <Lightbox src={src} onClose={() => setLb(false)} />}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// ── XLSX COLUMN MAPS ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+const SHEETS = {
+  inv: {
+    key: 'inv_items',
+    name: '생필품',
+    cols: [
+      { h:'카테고리', f:'cat' },
+      { h:'제품명',   f:'name' },
+      { h:'구매일',   f:'buyDate' },
+      { h:'여분(개)', f:'extra' },
+      { h:'잔량(%)',  f:'amount' },
+      { h:'별점',     f:'star' },
+      { h:'메모',     f:'note' },
+    ],
+    defaults: { id:'', cat:'기타', name:'', buyDate:'', extra:0, amount:100, star:5, note:'' },
+  },
+  cos: {
+    key: 'cos_items',
+    name: '화장품',
+    cols: [
+      { h:'카테고리',   f:'cat' },
+      { h:'제품명',     f:'name' },
+      { h:'호수/컬러',  f:'shade' },
+      { h:'구매일',     f:'buyDate' },
+      { h:'재구매',     f:'rebuy' },     // yes/no
+      { h:'컬러변경',   f:'changeColor' }, // yes/no
+      { h:'별점',       f:'star' },
+      { h:'후기',       f:'note' },
+    ],
+    defaults: { id:'', cat:'기초', name:'', shade:'', buyDate:'', rebuy:'yes', changeColor:'no', star:4, note:'' },
+  },
+  clo: {
+    key: 'clo_items',
+    name: '옷장',
+    cols: [
+      { h:'구분',   f:'cat' },
+      { h:'색상',   f:'color' },
+      { h:'구매처', f:'brand' },
+      { h:'핏',     f:'fit' },
+      { h:'소재감', f:'material' },
+      { h:'만족도', f:'star' },
+      { h:'코디팁', f:'tip' },
+      { h:'메모',   f:'note' },
+    ],
+    defaults: { id:'', cat:'상의', color:'', brand:'', fit:'', material:'', star:4, tip:'', note:'' },
+  },
+  wsh: {
+    key: 'wsh_items',
+    name: '잡동사니',
+    cols: [
+      { h:'카테고리', f:'cat' },
+      { h:'제품명',   f:'name' },
+      { h:'예상가격', f:'price' },
+      { h:'사고싶은마음', f:'desire' },
+      { h:'필요도',   f:'need' },
+      { h:'상태',     f:'status' },
+      { h:'링크',     f:'link' },
+      { h:'메모',     f:'note' },
+    ],
+    defaults: { id:'', cat:'', name:'', price:'', desire:3, need:3, status:'wish', link:'', note:'' },
+  },
+  trv: {
+    key: 'trv_trips',
+    name: '여행',
+    cols: [
+      { h:'여행명',   f:'name' },
+      { h:'목적지',   f:'dest' },
+      { h:'출발일',   f:'startDate' },
+      { h:'귀국일',   f:'endDate' },
+      { h:'상태',     f:'status' },  // plan/going/done
+      { h:'총예산',   f:'budget' },
+      { h:'사용금액', f:'spent' },
+      { h:'메모',     f:'note' },
+    ],
+    defaults: { id:'', name:'', dest:'', startDate:'', endDate:'', status:'plan', budget:'', spent:'', note:'', checklist:[] },
+  },
+};
+
+// ── 엑셀 내보내기 ────────────────────────────────────────────────
+const exportXlsx = () => {
+  if (!window.XLSX) return alert('SheetJS 로드 실패. 잠시 후 다시 시도하세요.');
+  const wb = XLSX.utils.book_new();
+  Object.values(SHEETS).forEach(({ key, name, cols }) => {
+    let rows = [];
+    try { rows = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+    const headers = cols.map(c => c.h);
+    const data = rows.map(row => cols.map(c => row[c.f] ?? ''));
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    // 컬럼 너비 설정
+    ws['!cols'] = cols.map(() => ({ wch: 18 }));
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  });
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `생활통합관리_${date}.xlsx`);
+};
+
+// ── 엑셀 가져오기 파서 ──────────────────────────────────────────
+const parseXlsx = (file) => new Promise((resolve, reject) => {
+  if (!window.XLSX) return reject('SheetJS 로드 실패');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'binary', cellDates:true });
+      const result = {};
+      Object.entries(SHEETS).forEach(([tabId, { name, cols, defaults }]) => {
+        const ws = wb.Sheets[name];
+        if (!ws) return;
+        const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        if (rows.length < 2) return;
+        const [headerRow, ...dataRows] = rows;
+        // 헤더→필드 매핑
+        const idxMap = cols.map(c => headerRow.indexOf(c.h));
+        const parsed = dataRows
+          .filter(r => r.some(cell => cell !== ''))
+          .map(r => {
+            const obj = { ...defaults, id: uid() };
+            cols.forEach((c, i) => {
+              const idx = idxMap[i];
+              if (idx !== -1 && r[idx] !== '') {
+                let v = r[idx];
+                if (v instanceof Date) v = v.toISOString().slice(0,10);
+                obj[c.f] = String(v);
+              }
+            });
+            return obj;
+          });
+        result[tabId] = parsed;
+      });
+      resolve(result);
+    } catch(err) { reject(err); }
+  };
+  reader.onerror = reject;
+  reader.readAsBinaryString(file);
+});
+
+// ── JSON 저장 키 목록 ────────────────────────────────────────────
+const ALL_KEYS = {
+  inv_items:    { label:'생필품 목록',   tab:'생필품' },
+  cos_items:    { label:'화장품 목록',   tab:'화장품' },
+  cos_disposed: { label:'화장품 폐기함', tab:'화장품' },
+  clo_items:    { label:'옷장 목록',     tab:'옷장' },
+  wsh_items:    { label:'잡동사니 목록', tab:'잡동사니' },
+  trv_trips:    { label:'여행 일정',     tab:'여행' },
+};
+
+// ── JSON 내보내기 ────────────────────────────────────────────────
+const exportJson = async () => {
+  const payload = { version:'1.1', exportedAt: new Date().toISOString(), data:{}, images:[] };
+  Object.keys(ALL_KEYS).forEach(k => {
+    try { payload.data[k] = JSON.parse(localStorage.getItem(k) || '[]'); } catch { payload.data[k] = []; }
+  });
+  try { payload.images = await ImageDB.getAll(); } catch {}
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `생활통합관리_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// ── JSON 파일 파싱 ────────────────────────────────────────────────
+const parseJson = file => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      // 두 가지 형식 지원: { version, data:{...} } 또는 직접 { inv_items:[], ... }
+      const data = parsed.data || parsed;
+      // 검증: 최소 하나의 키가 있어야 함
+      const valid = Object.keys(ALL_KEYS).some(k => Array.isArray(data[k]));
+      if (!valid) return reject('올바른 백업 파일이 아닙니다.');
+      resolve({ meta: { exportedAt: parsed.exportedAt, version: parsed.version }, data });
+    } catch { reject('JSON 파일 파싱 실패. 올바른 파일인지 확인하세요.'); }
+  };
+  reader.onerror = () => reject('파일 읽기 실패');
+  reader.readAsText(file, 'utf-8');
+});
+
+// ── ImportExport 컴포넌트 ────────────────────────────────────────
+const ImportExport = ({ renderLinks }) => {
+  const [xlsxModal, setXlsxModal] = useState(false);
+  const [jsonModal, setJsonModal]  = useState(false);
+  const [drag, setDrag]            = useState(false);
+  const [xlsxPreview, setXlsxPreview] = useState(null);
+  const [jsonPreview, setJsonPreview] = useState(null);
+  const [importing, setImporting]  = useState(false);
+  const [mode, setMode]            = useState('replace');
+  const xlsxRef = React.useRef(null);
+  const jsonRef  = React.useRef(null);
+
+  // ── xlsx 가져오기 ──
+  const handleXlsxFile = async file => {
+    if (!file) return;
+    try { setXlsxPreview(await parseXlsx(file)); }
+    catch(e) { alert('파일을 읽는 중 오류: ' + e); }
+  };
+  const doXlsxImport = () => {
+    if (!xlsxPreview) return;
+    setImporting(true);
+    Object.entries(SHEETS).forEach(([tabId, { key }]) => {
+      const incoming = xlsxPreview[tabId];
+      if (!incoming) return;
+      if (mode==='replace') { localStorage.setItem(key, JSON.stringify(incoming)); }
+      else {
+        let ex = []; try { ex = JSON.parse(localStorage.getItem(key)||'[]'); } catch {}
+        localStorage.setItem(key, JSON.stringify([...incoming, ...ex]));
+      }
+    });
+    setTimeout(() => window.location.reload(), 300);
+  };
+
+  // ── JSON 가져오기 ──
+  const handleJsonFile = async file => {
+    if (!file) return;
+    try { setJsonPreview(await parseJson(file)); }
+    catch(e) { alert(e); }
+  };
+  const doJsonImport = async () => {
+    if (!jsonPreview) return;
+    setImporting(true);
+    Object.keys(ALL_KEYS).forEach(k => {
+      const incoming = jsonPreview.data[k];
+      if (!Array.isArray(incoming)) return;
+      if (mode==='replace') { localStorage.setItem(k, JSON.stringify(incoming)); }
+      else {
+        let ex = []; try { ex = JSON.parse(localStorage.getItem(k)||'[]'); } catch {}
+        localStorage.setItem(k, JSON.stringify([...incoming, ...ex]));
+      }
+    });
+    // 이미지 복원
+    const imgs = jsonPreview.images || [];
+    if (imgs.length) { try { await ImageDB.saveAll(imgs); } catch {} }
+    setTimeout(() => window.location.reload(), 300);
+  };
+
+  const totalJsonRows = jsonPreview
+    ? Object.keys(ALL_KEYS).reduce((s,k)=>s+(jsonPreview.data[k]?.length||0),0) : 0;
+  const totalXlsxRows = xlsxPreview
+    ? Object.values(xlsxPreview).reduce((s,a)=>s+(a?.length||0),0) : 0;
+
+  // ── 공통 드롭존 ──
+  const DropZone = ({ onFile, accept, label }) => {
+    const ref = React.useRef(null);
+    return (
+      <>
+        <div
+          className={`drop-zone ${drag?'drag':''}`}
+          onDragOver={e=>{e.preventDefault();setDrag(true);}}
+          onDragLeave={()=>setDrag(false)}
+          onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f)onFile(f);}}
+          onClick={()=>ref.current.click()}
+        >
+          <Icon name="FileUp" size={32} color="var(--lav-acc)" />
+          <p>파일을 드래그하거나 클릭해서 선택</p>
+          <small>{label}</small>
+        </div>
+        <input ref={ref} type="file" accept={accept} style={{display:'none'}}
+          onChange={e=>{ if(e.target.files[0]) onFile(e.target.files[0]); }} />
+      </>
+    );
+  };
+
+  const Links = () => (
+    <div className="header-io">
+      <button className="hio-btn json" onClick={exportJson}>JSON 저장</button>
+      <span className="hio-sep">|</span>
+      <button className="hio-btn json" onClick={()=>{setJsonModal(true);setJsonPreview(null);setMode('replace');}}>불러오기</button>
+      <span style={{display:'inline-block',width:16}}/>
+      <button className="hio-btn xlsx-ex" onClick={exportXlsx}>엑셀 내보내기</button>
+      <span className="hio-sep">|</span>
+      <button className="hio-btn xlsx-im" onClick={()=>{setXlsxModal(true);setXlsxPreview(null);setMode('replace');}}>가져오기</button>
+    </div>
+  );
+
+  if (renderLinks) return <Links />;
+
+  return (
+    <>
+
+      {/* ── JSON 저장/불러오기 모달 ── */}
+      {jsonModal&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setJsonModal(false)}>
+          <div className="modal" style={{maxWidth:440}}>
+            <div className="modal-hd">
+              <span className="modal-title"><Icon name="FileJson" size={15}/>JSON 백업 불러오기</span>
+              <button className="btn btn-ic btn-sm" onClick={()=>setJsonModal(false)}><Icon name="X" size={13}/></button>
+            </div>
+            <div className="modal-body">
+              {!jsonPreview ? (
+                <>
+                  <DropZone onFile={handleJsonFile} accept=".json" label=".json 백업 파일" />
+                  <div style={{marginTop:12,padding:'10px 12px',background:'#fffde7',borderRadius:'var(--rs)',border:'1px solid #ffd54f'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#b07800',marginBottom:4}}>📁 JSON 백업이란?</div>
+                    <div style={{fontSize:11,color:'var(--text2)',lineHeight:1.7}}>
+                      <b>JSON 저장</b>으로 내보낸 파일을 다시 불러옵니다.<br/>
+                      생필품·화장품(폐기함 포함)·옷장·여행 <b>전체 데이터</b>가 복원됩니다.<br/>
+                      기기 이동 시 이 파일을 전송하면 그대로 이어서 사용할 수 있습니다.
+                    </div>
+                  </div>
+                </>
+              ):(
+                <>
+                  <div className="imp-section">
+                    <div className="imp-title"><Icon name="CheckCircle" size={13} color="#3aaa76"/>
+                      백업 파일 확인 완료 — 총 {totalJsonRows}개 항목
+                    </div>
+                    {jsonPreview.meta?.exportedAt&&(
+                      <div style={{fontSize:11,color:'var(--text3)',marginBottom:10}}>
+                        저장일시: {new Date(jsonPreview.meta.exportedAt).toLocaleString('ko-KR')}
+                      </div>
+                    )}
+                    {Object.entries(ALL_KEYS).map(([k,{label}])=>(
+                      <div key={k} className="imp-row">
+                        <span className="imp-sheet">{label}</span>
+                        {Array.isArray(jsonPreview.data[k])
+                          ? <span className="imp-ok">✓ {jsonPreview.data[k].length}개</span>
+                          : <span className="imp-err">없음 (건너뜀)</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="imp-section">
+                    <div className="imp-title"><Icon name="Settings" size={13} color="var(--text2)"/>불러오기 방식</div>
+                    <div className="tog-wrap" style={{maxWidth:260}}>
+                      <button type="button" className={`tog ${mode==='replace'?'t-yes':''}`} onClick={()=>setMode('replace')}>덮어쓰기</button>
+                      <button type="button" className={`tog ${mode==='merge'?'t-yes':''}`} onClick={()=>setMode('merge')}>병합 추가</button>
+                    </div>
+                    <div style={{fontSize:11,color:'var(--text3)',marginTop:6}}>{mode==='replace'?'기존 데이터를 모두 지우고 백업 내용으로 교체합니다.':'기존 데이터에 백업 내용을 추가합니다.'}</div>
+                  </div>
+                  {mode==='replace'&&<div style={{padding:'8px 12px',background:'#fff4f4',borderRadius:'var(--rs)',fontSize:11,color:'#c0392b'}}>⚠️ 덮어쓰기 시 현재 데이터가 삭제됩니다. 먼저 JSON 저장으로 백업하세요.</div>}
+                </>
+              )}
+            </div>
+            <div className="modal-ft">
+              {jsonPreview&&<button className="btn b-ghost" onClick={()=>setJsonPreview(null)}>다시 선택</button>}
+              <button className="btn b-ghost" onClick={()=>setJsonModal(false)}>취소</button>
+              {jsonPreview&&<button className="btn b-trv" onClick={doJsonImport} disabled={importing}>
+                {importing?'처리 중…':<><Icon name="FolderOpen" size={13}/>불러오기</>}
+              </button>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── xlsx 가져오기 모달 ── */}
+      {xlsxModal&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setXlsxModal(false)}>
+          <div className="modal" style={{maxWidth:440}}>
+            <div className="modal-hd">
+              <span className="modal-title"><Icon name="FileSpreadsheet" size={15}/>엑셀 가져오기</span>
+              <button className="btn btn-ic btn-sm" onClick={()=>setXlsxModal(false)}><Icon name="X" size={13}/></button>
+            </div>
+            <div className="modal-body">
+              {!xlsxPreview ? (
+                <>
+                  <DropZone onFile={handleXlsxFile} accept=".xlsx" label=".xlsx 파일 (시트명: 생필품 / 화장품 / 옷장 / 여행)" />
+                  <div style={{marginTop:12,padding:'10px 12px',background:'var(--lav)',borderRadius:'var(--rs)'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'var(--lav-acc)',marginBottom:4}}>💡 양식 안내</div>
+                    <div style={{fontSize:11,color:'var(--text2)',lineHeight:1.6}}>엑셀 내보내기로 양식을 받아 편집 후 다시 가져오세요.<br/>시트명이 정확해야 인식됩니다.</div>
+                  </div>
+                </>
+              ):(
+                <>
+                  <div className="imp-section">
+                    <div className="imp-title"><Icon name="CheckCircle" size={13} color="#3aaa76"/>파일 읽기 완료 — 총 {totalXlsxRows}개 항목</div>
+                    {Object.entries(SHEETS).map(([tabId,{name}])=>(
+                      <div key={tabId} className="imp-row">
+                        <span className="imp-sheet">{name}</span>
+                        {xlsxPreview[tabId]
+                          ? <span className="imp-ok">✓ {xlsxPreview[tabId].length}개</span>
+                          : <span className="imp-err">시트 없음 (건너뜀)</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="imp-section">
+                    <div className="imp-title"><Icon name="Settings" size={13} color="var(--text2)"/>가져오기 방식</div>
+                    <div className="tog-wrap" style={{maxWidth:260}}>
+                      <button type="button" className={`tog ${mode==='replace'?'t-yes':''}`} onClick={()=>setMode('replace')}>덮어쓰기</button>
+                      <button type="button" className={`tog ${mode==='merge'?'t-yes':''}`} onClick={()=>setMode('merge')}>병합 추가</button>
+                    </div>
+                    <div style={{fontSize:11,color:'var(--text3)',marginTop:6}}>{mode==='replace'?'기존 데이터를 모두 지우고 파일 내용으로 교체합니다.':'기존 데이터에 파일 내용을 추가합니다.'}</div>
+                  </div>
+                  {mode==='replace'&&<div style={{padding:'8px 12px',background:'#fff4f4',borderRadius:'var(--rs)',fontSize:11,color:'#c0392b'}}>⚠️ 덮어쓰기 시 기존 데이터가 삭제됩니다.</div>}
+                </>
+              )}
+            </div>
+            <div className="modal-ft">
+              {xlsxPreview&&<button className="btn b-ghost" onClick={()=>setXlsxPreview(null)}>다시 선택</button>}
+              <button className="btn b-ghost" onClick={()=>setXlsxModal(false)}>취소</button>
+              {xlsxPreview&&<button className="btn b-pri" onClick={doXlsxImport} disabled={importing}>
+                {importing?'처리 중…':<><Icon name="Download" size={13}/>가져오기</>}
+              </button>}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// ── INVENTORY TAB ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+const INV_CATS = ['전체','세제','욕실용품','주방용품','청소용품','위생용품','생활잡화','기타'];
+const INV_EMPTY = { id:'', cat:'세제', name:'', buyDate:today(), extra:1, amount:100, star:5, note:'' };
+
+const InventoryTab = () => {
+  const [items, setItems] = useData('inv_items', []);
+  const [modal, setModal] = useState(false);
+  const [lbSrc, setLbSrc] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(INV_EMPTY);
+  const [search, setSearch] = useState('');
+  const [cat, setCat] = useState('전체');
+  const [sort, setSort] = useState({ col:'buyDate', dir:'desc' });
+
+  const sf = k => v => setForm(f => ({ ...f, [k]: v }));
+  const openAdd = () => { setEditing(null); setForm({ ...INV_EMPTY, id:uid() }); setModal(true); };
+  const openEdit = it => { setEditing(it.id); setForm({ ...it }); setModal(true); };
+  const save = () => {
+    if (!form.name.trim()) return alert('제품명을 입력하세요');
+    if (editing) setItems(items.map(i => i.id===editing ? form : i));
+    else setItems([form, ...items]);
+    setModal(false);
+  };
+  const remove = id => { if (confirm('삭제할까요?')) setItems(items.filter(i => i.id!==id)); };
+  const ts = col => setSort(s => s.col===col ? { col, dir:s.dir==='asc'?'desc':'asc' } : { col, dir:'asc' });
+
+  const filtered = useMemo(() => {
+    let d = items;
+    if (cat !== '전체') d = d.filter(i => i.cat===cat);
+    if (search) d = d.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || i.note.toLowerCase().includes(search.toLowerCase()));
+    return [...d].sort((a,b) => {
+      let va = a[sort.col], vb = b[sort.col];
+      if (['extra','amount','star'].includes(sort.col)) { va=Number(va); vb=Number(vb); }
+      return sort.dir==='asc' ? (va<vb?-1:va>vb?1:0) : (va>vb?-1:va<vb?1:0);
+    });
+  }, [items, cat, search, sort]);
+
+  const Th = ({ col, label }) => (
+    <th className="sort" onClick={() => ts(col)}>
+      <div className="th-in">{label}<SortIco dir={sort.col===col?sort.dir:null} /></div>
+    </th>
+  );
+
+  return (
+    <div className="fade-in section">
+      <div className="card">
+        <div className="sec-head">
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div className="sec-title"><Icon name="ShoppingCart" size={16} color="var(--lav-acc)" />생필품</div>
+            {items.filter(i=>Number(i.amount)<=25).length>0&&(
+              <span style={{fontSize:12,fontWeight:700,color:'var(--blush-acc)',background:'rgba(232,114,154,.08)',borderRadius:20,padding:'2px 9px',border:'1px solid rgba(232,114,154,.2)'}}>
+                {items.filter(i=>Number(i.amount)<=25).length}
+              </span>
+            )}
+          </div>
+          <button className="btn b-pri" onClick={openAdd}><Icon name="Plus" size={13} />추가</button>
+        </div>
+        <div className="filter-row">
+          <div className="srch"><Icon name="Search" size={13} /><input className="input-srch" placeholder="제품명 검색…" value={search} onChange={e=>setSearch(e.target.value)} /></div>
+          <select className="fselect" value={cat} onChange={e=>setCat(e.target.value)}>{INV_CATS.map(c=><option key={c}>{c}</option>)}</select>
+        </div>
+        <div className="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>카테고리</th>
+              <Th col="name" label="제품명" />
+              <Th col="buyDate" label="구매일" />
+              <Th col="extra" label="여분" />
+              <Th col="amount" label="잔량" />
+              <Th col="star" label="별점" />
+              <th>메모</th><th>사진</th><th>관리</th>
+            </tr></thead>
+            <tbody>
+              {filtered.length===0 ? (
+                <tr><td colSpan={10}><div className="empty"><Icon name="PackageOpen" size={28} /><p>등록된 생필품이 없습니다</p></div></td></tr>
+              ) : filtered.map((it,i) => (
+                <tr key={it.id} style={{cursor:'pointer'}} onClick={()=>openEdit(it)}>
+                  <td style={{color:'var(--text3)',fontSize:10}}>{i+1}</td>
+                  <td><span className="pill p-pur">{it.cat}</span></td>
+                  <td style={{fontWeight:600}}>{it.name}</td>
+                  <td style={{color:'var(--text2)'}}>{it.buyDate}</td>
+                  <td><span className={`pill ${Number(it.extra)>0?'p-grn':'p-red'}`}>{it.extra}개</span></td>
+                  <td><ProgressBar value={it.amount} /></td>
+                  <td><Stars v={Number(it.star)} /></td>
+                  <td style={{maxWidth:140,color:'var(--text2)'}}>{it.note&&<span title={it.note}>{it.note.length>28?it.note.slice(0,28)+'…':it.note}</span>}</td>
+                  <td><ImageThumb itemId={it.id} onOpen={setLbSrc} /></td>
+                  <td><div className="ra" onClick={e=>e.stopPropagation()}>
+                    <button className="btn btn-ic btn-sm" onClick={()=>openEdit(it)}><Icon name="Pencil" size={11} /></button>
+                    <button className="btn b-danger btn-sm" onClick={()=>remove(it.id)}><Icon name="Trash2" size={11} /></button>
+                  </div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <Modal open={modal} onClose={()=>setModal(false)} title={<><Icon name="ShoppingCart" size={14} />{editing?'수정':'추가'}</>} onSave={save}>
+        <div className="fg2">
+          <div className="fg"><label>카테고리</label><select className="sel" value={form.cat} onChange={e=>sf('cat')(e.target.value)}>{INV_CATS.slice(1).map(c=><option key={c}>{c}</option>)}</select></div>
+          <div className="fg"><label>제품명 *</label><input className="inp" value={form.name} onChange={e=>sf('name')(e.target.value)} placeholder="예) 피죤 섬유유연제" /></div>
+          <div className="fg"><label>구매일</label><input className="inp" type="date" value={form.buyDate} onChange={e=>sf('buyDate')(e.target.value)} /></div>
+          <div className="fg"><label>여분 수량(개)</label><input className="inp" type="number" min={0} value={form.extra} onChange={e=>sf('extra')(e.target.value)} /></div>
+          <div className="fg full"><label>잔량 ({form.amount}%)</label>
+            <input type="range" min={0} max={100} value={form.amount} onChange={e=>sf('amount')(e.target.value)} style={{width:'100%',accentColor:'var(--lav-acc)',marginBottom:6}} />
+            <ProgressBar value={form.amount} />
+          </div>
+          <div className="fg"><label>별점</label><StarInput value={Number(form.star)} onChange={sf('star')} /></div>
+          <div className="fg full"><label>사용 후기</label><textarea className="txta" value={form.note} onChange={e=>sf('note')(e.target.value)} placeholder="제품 메모" /></div>
+          <div className="fg full"><label>사진</label><ImageUploadField itemId={form.id} /></div>
+        </div>
+      </Modal>
+      {lbSrc&&<Lightbox src={lbSrc} onClose={()=>setLbSrc(null)}/>}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// ── COSMETICS TAB ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+const COS_CATS = ['전체','기초','색조','선케어','헤어/바디','향수','기타'];
+const COS_EMPTY = { id:'', cat:'기초', name:'', shade:'', buyDate:today(), rebuy:'yes', changeColor:'no', star:4, note:'' };
+
+const CosmeticsTab = () => {
+  const [items, setItems] = useData('cos_items', []);
+  const [disposed, setDisposed] = useData('cos_disposed', []);
+  const [lbSrc, setLbSrc] = useState(null);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(COS_EMPTY);
+  const [search, setSearch] = useState('');
+  const [cat, setCat] = useState('전체');
+  const [colorKw, setColorKw] = useState('');
+  const [sort, setSort] = useState({ col:'buyDate', dir:'desc' });
+  const [showDisp, setShowDisp] = useState(false);
+
+  const sf = k => v => setForm(f => ({ ...f, [k]: v }));
+  const openAdd = () => { setEditing(null); setForm({ ...COS_EMPTY, id:uid() }); setModal(true); };
+  const openEdit = it => { setEditing(it.id); setForm({ ...it }); setModal(true); };
+  const save = () => {
+    if (!form.name.trim()) return alert('제품명을 입력하세요');
+    if (editing) setItems(items.map(i => i.id===editing ? form : i));
+    else setItems([form, ...items]);
+    setModal(false);
+  };
+  const remove = id => { if (confirm('삭제할까요?')) setItems(items.filter(i => i.id!==id)); };
+  const dispose = it => { setItems(items.filter(i=>i.id!==it.id)); setDisposed([{...it,disposedAt:today()},...disposed]); setShowDisp(true); };
+  const restore = it => { setDisposed(disposed.filter(i=>i.id!==it.id)); setItems([{...it,disposedAt:undefined},...items]); };
+  const delDisp = id => { if(confirm('영구 삭제?')) setDisposed(disposed.filter(i=>i.id!==id)); };
+  const ts = col => setSort(s => s.col===col ? { col, dir:s.dir==='asc'?'desc':'asc' } : { col, dir:'asc' });
+
+  const filtered = useMemo(() => {
+    let d = items;
+    if (cat!=='전체') d=d.filter(i=>i.cat===cat);
+    if (search) d=d.filter(i=>i.name.toLowerCase().includes(search.toLowerCase())||i.shade.toLowerCase().includes(search.toLowerCase()));
+    if (colorKw) {
+      d=d.filter(i=>matchesColorFilterWithTag(i,'shade',colorKw,COS_COLOR_FILTERS));
+    }
+    return [...d].sort((a,b)=>{
+      let va=a[sort.col],vb=b[sort.col];
+      if(sort.col==='star'){va=Number(va);vb=Number(vb);}
+      return sort.dir==='asc'?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+    });
+  }, [items, cat, search, colorKw, sort]);
+
+  const Th = ({ col, label }) => (
+    <th className="sort" onClick={()=>ts(col)}><div className="th-in">{label}<SortIco dir={sort.col===col?sort.dir:null}/></div></th>
+  );
+
+  return (
+    <div className="fade-in section">
+
+      <div className="card">
+        <div className="sec-head">
+          <div className="sec-title"><span style={{color:'var(--blush-acc)'}}>화장품</span><span className="badge" style={{background:'var(--blush)',color:'var(--blush-acc)'}}>{filtered.length}</span></div>
+          <button className="btn b-cos" onClick={openAdd}><Icon name="Plus" size={13} />추가</button>
+        </div>
+        <div className="filter-row">
+          <div className="srch"><Icon name="Search" size={13} /><input className="input-srch" placeholder="제품명/호수 검색…" value={search} onChange={e=>setSearch(e.target.value)} /></div>
+          <select className="fselect" value={cat} onChange={e=>setCat(e.target.value)}>{COS_CATS.map(c=><option key={c}>{c}</option>)}</select>
+        </div>
+        <ColorCircleChips type="cos" active={colorKw} onSelect={setColorKw} />
+        <div className="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>카테고리</th>
+              <Th col="name" label="제품명" />
+              <th>호수/컬러</th>
+              <Th col="buyDate" label="구매일" />
+              <th>재구매</th><th>컬러변경</th>
+              <Th col="star" label="별점" />
+              <th>후기</th><th>사진</th><th>관리</th>
+            </tr></thead>
+            <tbody>
+              {filtered.length===0?(
+                <tr><td colSpan={11}><div className="empty"><Icon name="FlaskConical" size={28}/><p>등록된 화장품이 없습니다</p></div></td></tr>
+              ):filtered.map((it,i)=>(
+                <tr key={it.id} style={{cursor:'pointer'}} onClick={()=>openEdit(it)}>
+                  <td style={{color:'var(--text3)',fontSize:10}}>{i+1}</td>
+                  <td><span className="pill p-red" style={{background:'var(--blush)'}}>{it.cat}</span></td>
+                  <td style={{fontWeight:600}}>{it.name}</td>
+                  <td><span className="pill p-blu">{it.shade||'—'}</span></td>
+                  <td style={{color:'var(--text2)'}}>{it.buyDate}</td>
+                  <td><span className={`pill ${it.rebuy==='yes'?'p-grn':'p-red'}`}>{it.rebuy==='yes'?'재구매 ✓':'패스'}</span></td>
+                  <td><span className={`pill ${it.changeColor==='yes'?'p-org':'p-gry'}`}>{it.changeColor==='yes'?'변경':'유지'}</span></td>
+                  <td><Stars v={Number(it.star)} /></td>
+                  <td style={{maxWidth:120,color:'var(--text2)'}}>{it.note&&<span title={it.note}>{it.note.length>22?it.note.slice(0,22)+'…':it.note}</span>}</td>
+                  <td><ImageThumb itemId={it.id} onOpen={setLbSrc} /></td>
+                  <td><div className="ra" onClick={e=>e.stopPropagation()}>
+                    <button className="btn btn-ic btn-sm" onClick={()=>openEdit(it)}><Icon name="Pencil" size={11}/></button>
+                    <button className="btn btn-sm" style={{background:'#fff0f0',color:'#e05757',border:'1.5px solid #fdd5d5',borderRadius:'var(--rx)',cursor:'pointer',fontFamily:'inherit',fontWeight:600,fontSize:11,display:'inline-flex',alignItems:'center',gap:3,padding:'5px 8px'}} onClick={()=>dispose(it)}><Icon name="Trash" size={11}/>폐기</button>
+                  </div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {/* 폐기 보관함 */}
+      <div style={{borderRadius:'var(--r)',border:'1.5px solid #fdd5d5',overflow:'hidden',marginBottom:12}}>
+        <div className="disp-hd" onClick={()=>setShowDisp(!showDisp)}>
+          <Icon name="Archive" size={15} color="var(--blush-acc)" />
+          <span className="disp-title">폐기 보관함</span>
+          <span className="pill p-red">{disposed.length}</span>
+          <Icon name={showDisp?'ChevronUp':'ChevronDown'} size={14} color="var(--blush-acc)" />
+        </div>
+        {showDisp&&<div className="disp-body">
+          {disposed.length===0?(
+            <div className="empty" style={{padding:24}}><Icon name="Archive" size={24}/><p>폐기된 제품 없음</p></div>
+          ):(
+            <div className="tbl-wrap"><table>
+              <thead><tr><th>제품명</th><th>카테고리</th><th>호수/컬러</th><th>구매일</th><th>폐기일</th><th>별점</th><th>관리</th></tr></thead>
+              <tbody>{disposed.map(it=>(
+                <tr key={it.id}>
+                  <td style={{fontWeight:600,textDecoration:'line-through',color:'var(--text3)'}}>{it.name}</td>
+                  <td><span className="pill p-gry">{it.cat}</span></td>
+                  <td style={{color:'var(--text3)'}}>{it.shade||'—'}</td>
+                  <td style={{color:'var(--text3)'}}>{it.buyDate}</td>
+                  <td style={{color:'var(--blush-acc)'}}>{it.disposedAt}</td>
+                  <td><Stars v={Number(it.star)}/></td>
+                  <td><div className="ra">
+                    <button className="btn b-ghost btn-sm" onClick={()=>restore(it)}>복원</button>
+                    <button className="btn b-danger btn-sm" onClick={()=>delDisp(it.id)}><Icon name="X" size={11}/></button>
+                  </div></td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )}
+        </div>}
+      </div>
+      <Modal open={modal} onClose={()=>setModal(false)} title={<><Icon name="Sparkles" size={14}/>{editing?'수정':'추가'}</>} accent="b-cos" onSave={save}>
+        <div className="fg2">
+          <div className="fg"><label>카테고리</label><select className="sel" value={form.cat} onChange={e=>sf('cat')(e.target.value)}>{COS_CATS.slice(1).map(c=><option key={c}>{c}</option>)}</select></div>
+          <div className="fg"><label>제품명 *</label><input className="inp" value={form.name} onChange={e=>sf('name')(e.target.value)} placeholder="예) 맥 립스틱" /></div>
+          <div className="fg full"><label>호수 / 컬러명</label><input className="inp" value={form.shade} onChange={e=>sf('shade')(e.target.value)} placeholder="예) #615, 코랄핑크" />
+            <div style={{marginTop:6}}>
+              <div style={{fontSize:10,fontWeight:600,color:'var(--text3)',marginBottom:5}}>색상 계열 선택 (필터용)</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {COS_COLOR_FILTERS.filter(f=>f.key!=='X').map(f=>{
+                  const def = COLOR_CIRCLE_DEFS.cos.find(d=>d.key===f.key);
+                  const isActive = (form.colorTag||'')=== f.key;
+                  return (
+                    <button key={f.key} type="button"
+                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,background:'none',border:'none',cursor:'pointer',padding:'2px 4px'}}
+                      onClick={()=>sf('colorTag')(isActive?'':f.key)}>
+                      <div style={{width:24,height:24,borderRadius:'50%',background:def?.color||'#eee',border:isActive?'2px solid var(--text)':'2px solid transparent',boxShadow:isActive?'0 0 0 2px white, 0 0 0 4px #555':'0 1px 3px rgba(0,0,0,.12)',transition:'all .15s'}}/>
+                      <span style={{fontSize:9,fontWeight:600,color:isActive?'var(--text)':'var(--text3)'}}>{f.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="fg"><label>구매일</label><input className="inp" type="date" value={form.buyDate} onChange={e=>sf('buyDate')(e.target.value)} /></div>
+          <div className="fg"><label>재구매 의사</label>
+            <div className="tog-wrap">
+              <button type="button" className={`tog ${form.rebuy==='yes'?'t-yes':''}`} onClick={()=>sf('rebuy')('yes')}>재구매 ✓</button>
+              <button type="button" className={`tog ${form.rebuy==='no'?'t-no':''}`} onClick={()=>sf('rebuy')('no')}>패스</button>
+            </div>
+          </div>
+          <div className="fg"><label>다음 컬러 변경</label>
+            <div className="tog-wrap">
+              <button type="button" className={`tog ${form.changeColor==='yes'?'t-yes':''}`} onClick={()=>sf('changeColor')('yes')}>변경</button>
+              <button type="button" className={`tog ${form.changeColor==='no'?'t-no':''}`} onClick={()=>sf('changeColor')('no')}>유지</button>
+            </div>
+          </div>
+          <div className="fg full"><label>별점</label><StarInput value={Number(form.star)} onChange={sf('star')} /></div>
+          <div className="fg full"><label>사진</label><ImageUploadField itemId={form.id} /></div>
+          <div className="fg full"><label>상세 후기</label><textarea className="txta" value={form.note} onChange={e=>sf('note')(e.target.value)} placeholder="발색, 지속력, 트러블 여부 등" /></div>
+        </div>
+      </Modal>
+      {lbSrc&&<Lightbox src={lbSrc} onClose={()=>setLbSrc(null)}/>}
+    </div>
+  );
+};
+
+// CLOSET TAB ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+const CLO_CATS = ['전체','상의','하의','아우터','원피스/세트','언더웨어','신발','가방/소품','기타'];
+const FIT_OPTS = ['','정사이즈','크게','작게','오버핏','슬림핏','루즈핏','기타'];
+const CLO_EMPTY = { id:'', cat:'상의', color:'', brand:'', fit:'', material:'', star:4, tip:'', note:'' };
+
+const ClosetTab = () => {
+  const [items, setItems] = useData('clo_items', []);
+  const [modal, setModal] = useState(false);
+  const [lbSrc, setLbSrc] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(CLO_EMPTY);
+  const [search, setSearch] = useState('');
+  const [cat, setCat] = useState('전체');
+  const [colorKw, setColorKw] = useState('');
+  const [view, setView] = useState('grid');
+
+  const sf = k => v => setForm(f => ({ ...f, [k]: v }));
+  const openAdd = () => { setEditing(null); setForm({ ...CLO_EMPTY, id:uid() }); setModal(true); };
+  const openEdit = it => { setEditing(it.id); setForm({ ...it }); setModal(true); };
+  const save = () => {
+    if (!form.color.trim() && !form.brand.trim()) return alert('색상 또는 구매처를 입력하세요');
+    if (editing) setItems(items.map(i => i.id===editing ? form : i));
+    else setItems([form, ...items]);
+    setModal(false);
+  };
+  const remove = id => { if (confirm('삭제할까요?')) setItems(items.filter(i => i.id!==id)); };
+
+  const filtered = useMemo(() => {
+    let d = items;
+    if (cat!=='전체') d=d.filter(i=>i.cat===cat);
+    if (search) d=d.filter(i=>i.color.toLowerCase().includes(search.toLowerCase())||i.brand.toLowerCase().includes(search.toLowerCase())||(i.note||'').toLowerCase().includes(search.toLowerCase()));
+    if (colorKw) {
+      d=d.filter(i=>matchesColorFilterWithTag(i,'color',colorKw,CLO_COLOR_FILTERS));
+    }
+    return d;
+  }, [items, cat, search, colorKw]);
+
+  return (
+    <div className="fade-in section">
+      <div className="card">
+        <div className="sec-head">
+          <div className="sec-title"><Icon name="Shirt" size={16} color="var(--mint-acc)" /><span style={{color:'var(--mint-acc)'}}>옷장</span><span className="badge" style={{background:'var(--mint)',color:'var(--mint-acc)'}}>{filtered.length}</span></div>
+          <div style={{display:'flex',gap:6}}>
+            <div className="tog-wrap" style={{border:'1.5px solid var(--border)'}}>
+              <button type="button" className={`tog ${view==='grid'?'t-yes':''}`} onClick={()=>setView('grid')} style={{padding:'6px 10px'}}><Icon name="LayoutGrid" size={12}/></button>
+              <button type="button" className={`tog ${view==='table'?'t-yes':''}`} onClick={()=>setView('table')} style={{padding:'6px 10px'}}><Icon name="List" size={12}/></button>
+            </div>
+            <button className="btn b-clo" onClick={openAdd}><Icon name="Plus" size={13}/>추가</button>
+          </div>
+        </div>
+        <div className="filter-row">
+          <div className="srch"><Icon name="Search" size={13}/><input className="input-srch" placeholder="색상, 구매처 검색…" value={search} onChange={e=>setSearch(e.target.value)} /></div>
+          <select className="fselect" value={cat} onChange={e=>setCat(e.target.value)}>{CLO_CATS.map(c=><option key={c}>{c}</option>)}</select>
+        </div>
+        <ColorCircleChips type="clo" active={colorKw} onSelect={setColorKw} />
+        {filtered.length===0?(
+          <div className="empty"><Icon name="Shirt" size={28}/><p>등록된 의류가 없습니다</p></div>
+        ):view==='grid'?(
+          <div className="clo-grid">
+            {filtered.map(it=>(
+              <div key={it.id} className="clo-card">
+                <ImageThumb itemId={it.id} onOpen={setLbSrc} className="card-img-cover" />
+                <div className="clo-ch">
+                  <div>
+                    <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:4}}>
+                      <span className="pill p-mnt">{it.cat}</span>
+                      {it.fit&&<span className="pill p-pur">{it.fit}</span>}
+                    </div>
+                    <div className="clo-ct">{it.color||'컬러 미입력'}</div>
+                    <div className="clo-cs">{it.brand||'구매처 미입력'}</div>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+                    <Stars v={Number(it.star)} />
+                    <div className="ra">
+                      <button className="btn btn-ic btn-sm" onClick={()=>openEdit(it)}><Icon name="Pencil" size={11}/></button>
+                      <button className="btn b-danger btn-sm" onClick={()=>remove(it.id)}><Icon name="Trash2" size={11}/></button>
+                    </div>
+                  </div>
+                </div>
+                {it.material&&<div className="clo-dr"><span className="clo-dl">소재</span><span className="clo-dv">{it.material}</span></div>}
+                {it.tip&&<div className="clo-dr"><span className="clo-dl">코디팁</span><span className="clo-dv">{it.tip}</span></div>}
+                {it.note&&<div className="clo-dr"><span className="clo-dl">메모</span><span className="clo-dv" style={{color:'var(--text3)'}}>{it.note}</span></div>}
+              </div>
+            ))}
+          </div>
+        ):(
+          <div className="tbl-wrap"><table>
+            <thead><tr><th>#</th><th>구분</th><th>색상</th><th>구매처</th><th>핏</th><th>소재감</th><th>만족도</th><th>코디팁</th><th>관리</th></tr></thead>
+            <tbody>{filtered.map((it,i)=>(
+              <tr key={it.id}>
+                <td style={{color:'var(--text3)',fontSize:10}}>{i+1}</td>
+                <td><span className="pill p-mnt">{it.cat}</span></td>
+                <td style={{fontWeight:600}}>{it.color||'—'}</td>
+                <td style={{color:'var(--text2)'}}>{it.brand||'—'}</td>
+                <td><span className="pill p-pur">{it.fit||'—'}</span></td>
+                <td style={{color:'var(--text2)'}}>{it.material||'—'}</td>
+                <td><Stars v={Number(it.star)}/></td>
+                <td style={{maxWidth:120,color:'var(--text2)'}}>{it.tip&&<span title={it.tip}>{it.tip.length>28?it.tip.slice(0,28)+'…':it.tip}</span>}</td>
+                <td><div className="ra">
+                  <button className="btn btn-ic btn-sm" onClick={()=>openEdit(it)}><Icon name="Pencil" size={11}/></button>
+                  <button className="btn b-danger btn-sm" onClick={()=>remove(it.id)}><Icon name="Trash2" size={11}/></button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </div>
+      <Modal open={modal} onClose={()=>setModal(false)} title={<><Icon name="Shirt" size={14}/>{editing?'수정':'추가'}</>} accent="b-clo" onSave={save}>
+        <div className="fg2">
+          <div className="fg"><label>구분</label><select className="sel" value={form.cat} onChange={e=>sf('cat')(e.target.value)}>{CLO_CATS.slice(1).map(c=><option key={c}>{c}</option>)}</select></div>
+          <div className="fg full"><label>색상</label><input className="inp" value={form.color} onChange={e=>sf('color')(e.target.value)} placeholder="예) 아이보리, 네이비블루" />
+            <div style={{marginTop:6}}>
+              <div style={{fontSize:10,fontWeight:600,color:'var(--text3)',marginBottom:5}}>색상 계열 선택 (필터용)</div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {CLO_COLOR_FILTERS.filter(f=>f.key!=='X').map(f=>{
+                  const def = COLOR_CIRCLE_DEFS.clo.find(d=>d.key===f.key);
+                  const isActive = (form.colorTag||'')=== f.key;
+                  return (
+                    <button key={f.key} type="button"
+                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,background:'none',border:'none',cursor:'pointer',padding:'2px 4px'}}
+                      onClick={()=>sf('colorTag')(isActive?'':f.key)}>
+                      <div style={{width:24,height:24,borderRadius:'50%',background:def?.isGradient?undefined:def?.color||'#eee',backgroundImage:def?.isGradient?def.color:undefined,border:isActive?'2px solid var(--text)':'2px solid transparent',boxShadow:isActive?'0 0 0 2px white, 0 0 0 4px #555':'0 1px 3px rgba(0,0,0,.12)',transition:'all .15s'}}/>
+                      <span style={{fontSize:9,fontWeight:600,color:isActive?'var(--text)':'var(--text3)'}}>{f.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="fg"><label>구매처/브랜드</label><input className="inp" value={form.brand} onChange={e=>sf('brand')(e.target.value)} placeholder="예) 무신사, 자라" /></div>
+          <div className="fg"><label>핏 (Fit)</label><select className="sel" value={form.fit} onChange={e=>sf('fit')(e.target.value)}>{FIT_OPTS.map(f=><option key={f} value={f}>{f||'선택 안 함'}</option>)}</select></div>
+          <div className="fg full"><label>소재감</label><input className="inp" value={form.material} onChange={e=>sf('material')(e.target.value)} placeholder="예) 부드럽고 신축성 있음" /></div>
+          <div className="fg"><label>만족도</label><StarInput value={Number(form.star)} onChange={sf('star')} /></div>
+          <div className="fg full"><label>코디 팁</label><input className="inp" value={form.tip} onChange={e=>sf('tip')(e.target.value)} placeholder="예) 와이드 팬츠와 잘 어울림" /></div>
+          <div className="fg full"><label>사진</label><ImageUploadField itemId={form.id} /></div>
+          <div className="fg full"><label>상세 메모</label><textarea className="txta" value={form.note} onChange={e=>sf('note')(e.target.value)} placeholder="세탁, 보관 주의사항 등" /></div>
+        </div>
+      </Modal>
+      {lbSrc&&<Lightbox src={lbSrc} onClose={()=>setLbSrc(null)}/>}
+    </div>
+  );
+};
+
+// TRAVEL TAB ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+const TRV_STATUS = { plan:'계획중', going:'여행중', done:'완료' };
+const TRV_COLORS = { plan:'p-pur', going:'p-grn', done:'p-gry' };
+const TRV_EMPTY = { id:'', name:'', dest:'', startDate:'', endDate:'', status:'plan', budget:'', spent:'', note:'', checklist:[], days:[] };
+
+// 일별 계획의 활동 카테고리
+const DAY_ACT_CATS = ['이동','숙소','식사','관광','쇼핑','액티비티','기타'];
+const DAY_ACT_COLORS = { '이동':'p-pur','숙소':'p-blu','식사':'p-org','관광':'p-grn','쇼핑':'p-red','액티비티':'p-mnt','기타':'p-gry' };
+
+// 날짜 범위 → Day 배열 생성
+const buildDays = (startDate, endDate, existingDays=[]) => {
+  if (!startDate) return existingDays;
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : start;
+  const days = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+    const dateStr = d.toISOString().slice(0,10);
+    const existing = existingDays.find(dd=>dd.date===dateStr);
+    days.push(existing || { id:uid(), date:dateStr, title:'', activities:[] });
+  }
+  return days;
+};
+
+const dayLabel = (dateStr, idx) => {
+  const d = new Date(dateStr);
+  const week = ['일','월','화','수','목','금','토'][d.getDay()];
+  return `Day ${idx+1} · ${dateStr.slice(5).replace('-','/')} (${week})`;
+};
+
+// ── 일별 계획 패널 ────────────────────────────────────────────────
+const DayPlanPanel = ({ trip, trips, setTrips, setSelected }) => {
+  const [openDay, setOpenDay] = useState(null);
+  const [actModal, setActModal] = useState(false);
+  const [editingAct, setEditingAct] = useState(null);
+  const [actForm, setActForm] = useState({ id:'', cat:'관광', time:'', title:'', place:'', cost:'', note:'' });
+  const [newActDay, setNewActDay] = useState(null);
+  const [dayTitleEdit, setDayTitleEdit] = useState(null);
+
+  const updateTrip = (updater) => {
+    const updated = trips.map(t => t.id!==trip.id ? t : updater(t));
+    setTrips(updated);
+    setSelected(updated.find(t=>t.id===trip.id));
+  };
+
+  const syncDays = () => {
+    updateTrip(t => ({
+      ...t,
+      days: buildDays(t.startDate, t.endDate, t.days||[])
+    }));
+  };
+
+  const days = trip.days || [];
+
+  const openAddAct = (dayId) => {
+    setNewActDay(dayId);
+    setEditingAct(null);
+    setActForm({ id:uid(), cat:'관광', time:'', title:'', place:'', cost:'', note:'' });
+    setActModal(true);
+  };
+  const openEditAct = (dayId, act) => {
+    setNewActDay(dayId);
+    setEditingAct(act.id);
+    setActForm({ ...act });
+    setActModal(true);
+  };
+  const saveAct = () => {
+    if (!actForm.title.trim()) return alert('활동명을 입력하세요');
+    updateTrip(t => ({
+      ...t,
+      days: (t.days||[]).map(d => d.id!==newActDay ? d : {
+        ...d,
+        activities: editingAct
+          ? d.activities.map(a => a.id===editingAct ? actForm : a)
+          : [...(d.activities||[]), actForm]
+      })
+    }));
+    setActModal(false);
+  };
+  const removeAct = (dayId, actId) => {
+    updateTrip(t => ({
+      ...t,
+      days: (t.days||[]).map(d => d.id!==dayId ? d : {
+        ...d, activities: d.activities.filter(a=>a.id!==actId)
+      })
+    }));
+  };
+  const saveDayTitle = (dayId, title) => {
+    updateTrip(t => ({
+      ...t,
+      days: (t.days||[]).map(d => d.id!==dayId ? d : { ...d, title })
+    }));
+    setDayTitleEdit(null);
+  };
+
+  const totalCost = days.reduce((s,d)=>s+(d.activities||[]).reduce((ss,a)=>ss+(Number(a.cost)||0),0),0);
+
+  return (
+    <div style={{marginTop:16}}>
+      {/* 헤더 */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:700,display:'flex',alignItems:'center',gap:6}}>
+          <Icon name="CalendarDays" size={15} color="var(--sky-acc)" />
+          일별 계획
+          <span className="badge" style={{background:'var(--sky)',color:'var(--sky-acc)'}}>{days.length}일</span>
+          {totalCost>0&&<span style={{fontSize:11,color:'var(--text3)',fontWeight:500}}>활동비 ₩{totalCost.toLocaleString()}</span>}
+        </div>
+        {trip.startDate&&(
+          <button className="btn b-ghost btn-sm" onClick={syncDays} title="날짜 기준으로 Day 재생성">
+            <Icon name="RefreshCw" size={11}/>일정 동기화
+          </button>
+        )}
+      </div>
+
+      {days.length===0&&(
+        <div style={{padding:'20px',textAlign:'center',color:'var(--text3)',fontSize:12,background:'var(--sky)',borderRadius:'var(--rs)'}}>
+          출발일/귀국일을 설정하고 <b>일정 동기화</b>를 눌러 Day별 계획을 시작하세요
+        </div>
+      )}
+
+      {/* Day 목록 */}
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {days.map((day, idx)=>{
+          const isOpen = openDay===day.id;
+          const acts = day.activities||[];
+          const dayCost = acts.reduce((s,a)=>s+(Number(a.cost)||0),0);
+          return (
+            <div key={day.id} style={{border:'1.5px solid var(--border)',borderRadius:'var(--rs)',overflow:'hidden',background:'white'}}>
+              {/* Day 헤더 */}
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:isOpen?'var(--sky)':'white',cursor:'pointer',transition:'background .15s'}}
+                onClick={()=>setOpenDay(isOpen?null:day.id)}>
+                <div style={{width:28,height:28,borderRadius:8,background:'var(--sky-acc)',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,flexShrink:0}}>
+                  {idx+1}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:11,color:'var(--sky-acc)',fontWeight:700}}>{dayLabel(day.date,idx)}</div>
+                  {dayTitleEdit===day.id ? (
+                    <input
+                      className="inp" autoFocus
+                      style={{fontSize:12,padding:'2px 6px',marginTop:2,height:24}}
+                      defaultValue={day.title}
+                      onBlur={e=>saveDayTitle(day.id,e.target.value)}
+                      onKeyDown={e=>{if(e.key==='Enter')saveDayTitle(day.id,e.target.value);if(e.key==='Escape')setDayTitleEdit(null);}}
+                      onClick={e=>e.stopPropagation()}
+                    />
+                  ) : (
+                    <div style={{fontSize:12,color:'var(--text2)',marginTop:1,display:'flex',alignItems:'center',gap:4}}>
+                      {day.title||<span style={{color:'var(--text3)'}}>제목 없음</span>}
+                      <button style={{background:'none',border:'none',cursor:'pointer',padding:2,color:'var(--text3)',opacity:.6}} onClick={e=>{e.stopPropagation();setDayTitleEdit(day.id);}}><Icon name="Pencil" size={9}/></button>
+                    </div>
+                  )}
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                  {acts.length>0&&<span style={{fontSize:10,color:'var(--text3)'}}>{acts.length}개</span>}
+                  {dayCost>0&&<span style={{fontSize:10,color:'var(--sky-acc)',fontWeight:600}}>₩{dayCost.toLocaleString()}</span>}
+                  <Icon name={isOpen?'ChevronUp':'ChevronDown'} size={13} color="var(--text3)" />
+                </div>
+              </div>
+
+              {/* Day 상세 */}
+              {isOpen&&(
+                <div style={{padding:'10px 14px',borderTop:'1px solid var(--border)'}}>
+                  {acts.length===0&&<div style={{fontSize:11,color:'var(--text3)',padding:'8px 0',textAlign:'center'}}>등록된 활동이 없습니다</div>}
+                  <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:8}}>
+                    {[...acts].sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(act=>(
+                      <div key={act.id} style={{display:'flex',alignItems:'flex-start',gap:8,padding:'8px 10px',background:'#f9f8ff',borderRadius:'var(--rx)',border:'1px solid var(--border)'}}>
+                        <div style={{flexShrink:0,marginTop:1}}>
+                          <span className={`pill ${DAY_ACT_COLORS[act.cat]||'p-gry'}`} style={{fontSize:9}}>{act.cat}</span>
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:'flex',alignItems:'center',gap:6}}>
+                            {act.time&&<span style={{fontSize:10,fontWeight:700,color:'var(--sky-acc)',minWidth:36}}>{act.time}</span>}
+                            <span style={{fontSize:12,fontWeight:600,color:'var(--text)'}}>{act.title}</span>
+                            {act.cost&&<span style={{fontSize:10,color:'var(--text3)',marginLeft:'auto'}}>₩{Number(act.cost).toLocaleString()}</span>}
+                          </div>
+                          {act.place&&<div style={{fontSize:11,color:'var(--text2)',marginTop:2,display:'flex',alignItems:'center',gap:3}}><Icon name="MapPin" size={9} color="var(--text3)"/>{act.place}</div>}
+                          {act.note&&<div style={{fontSize:10,color:'var(--text3)',marginTop:2}}>{act.note}</div>}
+                        </div>
+                        <div className="ra" style={{flexShrink:0}}>
+                          <button className="btn btn-ic btn-sm" style={{padding:'3px 5px'}} onClick={()=>openEditAct(day.id,act)}><Icon name="Pencil" size={10}/></button>
+                          <button className="btn b-danger btn-sm" style={{padding:'3px 5px'}} onClick={()=>removeAct(day.id,act.id)}><Icon name="Trash2" size={10}/></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="btn b-trv btn-sm" style={{width:'100%',justifyContent:'center'}} onClick={()=>openAddAct(day.id)}>
+                    <Icon name="Plus" size={12}/>활동 추가
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 활동 추가/수정 모달 */}
+      {actModal&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setActModal(false)}>
+          <div className="modal" style={{maxWidth:420}}>
+            <div className="modal-hd">
+              <span className="modal-title"><Icon name="CalendarPlus" size={14}/>{editingAct?'활동 수정':'활동 추가'}</span>
+              <button className="btn btn-ic btn-sm" onClick={()=>setActModal(false)}><Icon name="X" size={13}/></button>
+            </div>
+            <div className="modal-body">
+              <div className="fg2">
+                <div className="fg"><label>카테고리</label>
+                  <select className="sel" value={actForm.cat} onChange={e=>setActForm(f=>({...f,cat:e.target.value}))}>
+                    {DAY_ACT_CATS.map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="fg"><label>시간</label>
+                  <input className="inp" type="time" value={actForm.time} onChange={e=>setActForm(f=>({...f,time:e.target.value}))} />
+                </div>
+                <div className="fg full"><label>활동명 *</label>
+                  <input className="inp" value={actForm.title} onChange={e=>setActForm(f=>({...f,title:e.target.value}))} placeholder="예) 오사카성 관람" />
+                </div>
+                <div className="fg full"><label>장소</label>
+                  <input className="inp" value={actForm.place} onChange={e=>setActForm(f=>({...f,place:e.target.value}))} placeholder="예) 오사카성 공원" />
+                </div>
+                <div className="fg"><label>비용 (₩)</label>
+                  <input className="inp" type="number" value={actForm.cost} onChange={e=>setActForm(f=>({...f,cost:e.target.value}))} placeholder="0" />
+                </div>
+                <div className="fg full"><label>메모</label>
+                  <textarea className="txta" style={{minHeight:56}} value={actForm.note} onChange={e=>setActForm(f=>({...f,note:e.target.value}))} placeholder="예약 번호, 준비물 등" />
+                </div>
+              </div>
+            </div>
+            <div className="modal-ft">
+              <button className="btn b-ghost" onClick={()=>setActModal(false)}>취소</button>
+              <button className="btn b-trv" onClick={saveAct}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// ── WISHLIST (잡동사니) TAB ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+const WSH_STATUS = { wish:'찜', review:'검토중', bought:'구매완료' };
+const WSH_STATUS_COLORS = { wish:'p-pur', review:'p-org', bought:'p-grn' };
+const WSH_PRESET_CATS = ['전자기기/가전','가구/인테리어','패션/잡화','뷰티/향수','취미/스포츠','도서/문구','기타'];
+const WSH_EMPTY = { id:'', cat:'', name:'', price:'', desire:3, need:3, status:'wish', link:'', note:'' };
+
+const WishTab = () => {
+  const [items, setItems] = useData('wsh_items', []);
+  const [modal, setModal] = useState(false);
+  const [lbSrc, setLbSrc] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(WSH_EMPTY);
+  const [search, setSearch] = useState('');
+  const [statusF, setStatusF] = useState('전체');
+  const [sort, setSort] = useState({ col:'priority', dir:'desc' });
+  const [catInput, setCatInput] = useState('');
+
+  const sf = k => v => setForm(f => ({ ...f, [k]: v }));
+  const openAdd = () => { setEditing(null); setForm({ ...WSH_EMPTY, id:uid() }); setCatInput(''); setModal(true); };
+  const openEdit = it => { setEditing(it.id); setForm({ ...it }); setCatInput(it.cat||''); setModal(true); };
+  const save = () => {
+    if (!form.name.trim()) return alert('제품명을 입력하세요');
+    const finalForm = { ...form, cat: catInput.trim() || '기타' };
+    if (editing) setItems(items.map(i => i.id===editing ? finalForm : i));
+    else setItems([finalForm, ...items]);
+    setModal(false);
+  };
+  const remove = id => { if (confirm('삭제할까요?')) setItems(items.filter(i => i.id!==id)); };
+  const ts = col => setSort(s => s.col===col ? { col, dir:s.dir==='asc'?'desc':'asc' } : { col, dir:'desc' });
+
+  const filtered = useMemo(() => {
+    let d = items;
+    if (statusF!=='전체') d = d.filter(i=>i.status===statusF);
+    if (search) d = d.filter(i=>i.name.toLowerCase().includes(search.toLowerCase())||(i.cat||'').toLowerCase().includes(search.toLowerCase())||(i.note||'').toLowerCase().includes(search.toLowerCase()));
+    return [...d].sort((a,b)=>{
+      let va, vb;
+      if (sort.col==='priority') {
+        // 구매 우선순위 = 사고싶은마음 * 0.5 + 필요도 * 0.5
+        va = Number(a.desire)*0.5 + Number(a.need)*0.5;
+        vb = Number(b.desire)*0.5 + Number(b.need)*0.5;
+      } else {
+        va=a[sort.col]; vb=b[sort.col];
+        if (['desire','need','price'].includes(sort.col)){va=Number(va);vb=Number(vb);}
+      }
+      return sort.dir==='asc'?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+    });
+  }, [items, statusF, search, sort]);
+
+  const Th = ({ col, label }) => (
+    <th className="sort" onClick={()=>ts(col)}><div className="th-in">{label}<SortIco dir={sort.col===col?sort.dir:null}/></div></th>
+  );
+
+  const totalPrice = items.filter(i=>i.status!=='bought').reduce((s,i)=>s+(Number(i.price)||0),0);
+  const boughtCount = items.filter(i=>i.status==='bought').length;
+
+  // 별점 표시 (사고싶은마음 = 핑크, 필요도 = 파랑)
+  const DesireStars = ({ v=0 }) => (
+    <div className="stars">{[1,2,3,4,5].map(i=><span key={i} style={{fontSize:12,color:i<=v?'#e8729a':'#e0dcea'}}>♥</span>)}</div>
+  );
+  const NeedStars = ({ v=0 }) => (
+    <div className="stars">{[1,2,3,4,5].map(i=><span key={i} style={{fontSize:12,color:i<=v?'#5a9fe0':'#e0dcea'}}>★</span>)}</div>
+  );
+  const DesireInput = ({ value, onChange }) => (
+    <div className="star-input">{[1,2,3,4,5].map(i=>(
+      <button key={i} type="button" onClick={()=>onChange(i)} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,padding:'1px',lineHeight:1}}>
+        <span style={{color:i<=value?'#e8729a':'#e0dcea'}}>♥</span>
+      </button>
+    ))}</div>
+  );
+  const NeedInput = ({ value, onChange }) => (
+    <div className="star-input">{[1,2,3,4,5].map(i=>(
+      <button key={i} type="button" onClick={()=>onChange(i)} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,padding:'1px',lineHeight:1}}>
+        <span style={{color:i<=value?'#5a9fe0':'#e0dcea'}}>★</span>
+      </button>
+    ))}</div>
+  );
+
+  return (
+    <div className="fade-in section">
+      <div className="card">
+        <div className="sec-head">
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <div className="sec-title" style={{color:'#e07d28'}}>
+              <Icon name="ShoppingBag" size={16} color="#e07d28"/>잡동사니
+            </div>
+            {totalPrice>0&&(
+              <span style={{fontSize:11,fontWeight:600,color:'#b07800',background:'#fff8e1',padding:'2px 8px',borderRadius:20,border:'1px solid #ffd54f'}}>
+                찜 합계 ₩{totalPrice.toLocaleString()}
+              </span>
+            )}
+            {boughtCount>0&&(
+              <span style={{fontSize:11,fontWeight:600,color:'#3aaa76',background:'#e8f8f0',padding:'2px 8px',borderRadius:20,border:'1px solid #b2dfcc'}}>
+                구매완료 {boughtCount}
+              </span>
+            )}
+          </div>
+          <button className="btn btn-sm" style={{background:'linear-gradient(135deg,#fff3e0,#ffe0b2)',color:'#e07d28',border:'none',boxShadow:'0 2px 8px rgba(240,147,90,.25)'}} onClick={openAdd}>
+            <Icon name="Plus" size={13}/>추가
+          </button>
+        </div>
+
+        {/* 상태 필터 */}
+        <div className="color-chips" style={{marginBottom:10}}>
+          {['전체','wish','review','bought'].map(s=>(
+            <button key={s} className={`color-chip ${statusF===s?'active':''}`}
+              style={statusF===s?{background:'#e07d28',borderColor:'#e07d28',color:'white'}:{}}
+              onClick={()=>setStatusF(s)}>
+              {s==='전체'?'전체':WSH_STATUS[s]}
+            </button>
+          ))}
+        </div>
+
+        <div className="filter-row">
+          <div className="srch"><Icon name="Search" size={13}/><input className="input-srch" placeholder="제품명, 카테고리 검색…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
+        </div>
+
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr style={{background:'#fff8e1'}}>
+                <th style={{color:'#b07800'}}>#</th>
+                <th style={{color:'#b07800'}}>카테고리</th>
+                <Th col="name" label="제품명" />
+                <Th col="price" label="예상가격" />
+                <Th col="desire" label="사고싶은마음" />
+                <Th col="need" label="필요도" />
+                <Th col="priority" label="🎯 구매우선순위" />
+                <th style={{color:'#b07800'}}>상태</th>
+                <th style={{color:'#b07800'}}>링크</th>
+                <th style={{color:'#b07800'}}>메모</th>
+                <th style={{color:'#b07800'}}>사진</th>
+                <th style={{color:'#b07800'}}>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length===0?(
+                <tr><td colSpan={11}><div className="empty"><Icon name="ShoppingBag" size={28}/><p>찜한 항목이 없습니다</p></div></td></tr>
+              ):filtered.map((it,i)=>(
+                <tr key={it.id} style={{cursor:'pointer',opacity:it.status==='bought'?.6:1}} onClick={()=>openEdit(it)}>
+                  <td style={{color:'var(--text3)',fontSize:10}}>{i+1}</td>
+                  <td><span className="pill p-org" style={{fontSize:10}}>{it.cat||'기타'}</span></td>
+                  <td style={{fontWeight:600,textDecoration:it.status==='bought'?'line-through':''}}>{it.name}</td>
+                  <td style={{color:'var(--text2)',fontWeight:600}}>{it.price?`₩${Number(it.price).toLocaleString()}`:'—'}</td>
+                  <td><DesireStars v={Number(it.desire)}/></td>
+                  <td><NeedStars v={Number(it.need)}/></td>
+                  <td>
+                    {(() => {
+                      const score = Number(it.desire)*0.5 + Number(it.need)*0.5;
+                      const pct = Math.round((score/5)*100);
+                      const color = score>=4?'#e07d28':score>=3?'#f5c842':'#9d93b5';
+                      return (
+                        <div style={{display:'flex',alignItems:'center',gap:5,minWidth:80}}>
+                          <div style={{flex:1,height:5,background:'#f0ede8',borderRadius:100,overflow:'hidden'}}>
+                            <div style={{width:`${pct}%`,height:'100%',background:color,borderRadius:100,transition:'width .3s'}}/>
+                          </div>
+                          <span style={{fontSize:10,fontWeight:700,color,minWidth:20}}>{score.toFixed(1)}</span>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td><span className={`pill ${WSH_STATUS_COLORS[it.status]||'p-gry'}`}>{WSH_STATUS[it.status]||it.status}</span></td>
+                  <td onClick={e=>e.stopPropagation()}>
+                    {it.link?<a href={it.link} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--sky-acc)',display:'flex',alignItems:'center',gap:3}}><Icon name="ExternalLink" size={11} color="var(--sky-acc)"/>링크</a>:'—'}
+                  </td>
+                  <td style={{maxWidth:120,color:'var(--text2)',fontSize:11}}>{it.note?<span title={it.note}>{it.note.length>22?it.note.slice(0,22)+'…':it.note}</span>:'—'}</td>
+                  <td><ImageThumb itemId={it.id} onOpen={setLbSrc}/></td>
+                  <td><div className="ra" onClick={e=>e.stopPropagation()}>
+                    <button className="btn btn-ic btn-sm" onClick={()=>openEdit(it)}><Icon name="Pencil" size={11}/></button>
+                    <button className="btn b-danger btn-sm" onClick={()=>remove(it.id)}><Icon name="Trash2" size={11}/></button>
+                  </div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 모달 */}
+      <Modal open={modal} onClose={()=>setModal(false)}
+        title={<><Icon name="ShoppingBag" size={14} color="#e07d28"/>{editing?'수정':'찜 추가'}</>}
+        accent="b-ghost" onSave={save}>
+        <div className="fg2">
+          {/* 카테고리 자유입력 + 프리셋 */}
+          <div className="fg full">
+            <label>카테고리</label>
+            <input className="inp" value={catInput} onChange={e=>setCatInput(e.target.value)} placeholder="직접 입력하거나 아래서 선택" />
+            <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:5}}>
+              {WSH_PRESET_CATS.map(c=>(
+                <button key={c} type="button"
+                  style={{padding:'3px 9px',borderRadius:20,border:`1.5px solid ${catInput===c?'#e07d28':'var(--border)'}`,background:catInput===c?'#fff3e0':'white',color:catInput===c?'#e07d28':'var(--text3)',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}
+                  onClick={()=>setCatInput(catInput===c?'':c)}>{c}</button>
+              ))}
+            </div>
+          </div>
+          <div className="fg full"><label>제품명 *</label><input className="inp" value={form.name} onChange={e=>sf('name')(e.target.value)} placeholder="예) 다이슨 에어랩" /></div>
+          <div className="fg"><label>예상 가격 (₩)</label><input className="inp" type="number" value={form.price} onChange={e=>sf('price')(e.target.value)} placeholder="예) 590000" /></div>
+          <div className="fg"><label>상태</label>
+            <select className="sel" value={form.status} onChange={e=>sf('status')(e.target.value)}>
+              {Object.entries(WSH_STATUS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label>사고싶은마음 ♥</label><DesireInput value={Number(form.desire)} onChange={sf('desire')}/></div>
+          <div className="fg"><label>필요도 ★</label><NeedInput value={Number(form.need)} onChange={sf('need')}/></div>
+          <div className="fg full"><label>구매 링크</label><input className="inp" value={form.link} onChange={e=>sf('link')(e.target.value)} placeholder="https://…" /></div>
+          <div className="fg full"><label>사진</label><ImageUploadField itemId={form.id}/></div>
+          <div className="fg full"><label>메모</label><textarea className="txta" value={form.note} onChange={e=>sf('note')(e.target.value)} placeholder="사고싶은 이유, 비교 제품 등" /></div>
+        </div>
+      </Modal>
+      {lbSrc&&<Lightbox src={lbSrc} onClose={()=>setLbSrc(null)}/>}
+    </div>
+  );
+};
+
+// ── TripCardImage — 그라데이션 오버레이 이미지 ────────────────────
+const TripCardImage = ({ tripId, name, dest, onOpen }) => {
+  const { src } = useImage(tripId);
+  if (!src) return null;
+  return (
+    <div className="trip-card-img-wrap" onClick={e=>{e.stopPropagation();onOpen(src);}}>
+      <img src={src} alt={name} />
+      <div className="trip-card-img-overlay">
+        <div className="trip-card-img-name">{name}</div>
+        {dest&&<div className="trip-card-img-dest"><Icon name="MapPin" size={10} color="rgba(255,255,255,.82)"/>{dest}</div>}
+      </div>
+    </div>
+  );
+};
+
+// ── TravelTab ────────────────────────────────────────────────────
+const TravelTab = () => {
+  const [trips, setTrips] = useData('trv_trips', []);
+  const [modal, setModal] = useState(false);
+  const [lbSrc, setLbSrc] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(TRV_EMPTY);
+  const [selected, setSelected] = useState(null);
+  const [newCheck, setNewCheck] = useState('');
+  const [statusF, setStatusF] = useState('전체');
+  const [detailTab, setDetailTab] = useState('overview'); // 'overview' | 'days'
+
+  const sf = k => v => setForm(f => ({ ...f, [k]: v }));
+  const openAdd = () => { setEditing(null); setForm({ ...TRV_EMPTY, id:uid(), checklist:[], days:[] }); setModal(true); };
+  const openEdit = it => { setEditing(it.id); setForm({ ...it, checklist:[...(it.checklist||[])], days:[...(it.days||[])] }); setModal(true); };
+  const save = () => {
+    if (!form.name.trim()) return alert('여행명을 입력하세요');
+    if (editing) { setTrips(trips.map(i=>i.id===editing?form:i)); if(selected?.id===editing) setSelected(form); }
+    else setTrips([form,...trips]);
+    setModal(false);
+  };
+  const remove = id => { if(confirm('삭제할까요?')) { setTrips(trips.filter(i=>i.id!==id)); if(selected?.id===id) setSelected(null); } };
+
+  const toggleCheck = (tripId, checkId) => {
+    const updated = trips.map(t => t.id!==tripId ? t : {
+      ...t, checklist: t.checklist.map(c => c.id===checkId ? {...c, done:!c.done} : c)
+    });
+    setTrips(updated);
+    if (selected?.id===tripId) setSelected(updated.find(t=>t.id===tripId));
+  };
+  const addCheck = tripId => {
+    if (!newCheck.trim()) return;
+    const updated = trips.map(t => t.id!==tripId ? t : {
+      ...t, checklist: [...(t.checklist||[]), { id:uid(), text:newCheck.trim(), done:false }]
+    });
+    setTrips(updated);
+    if (selected?.id===tripId) setSelected(updated.find(t=>t.id===tripId));
+    setNewCheck('');
+  };
+  const removeCheck = (tripId, checkId) => {
+    const updated = trips.map(t => t.id!==tripId ? t : {
+      ...t, checklist: t.checklist.filter(c=>c.id!==checkId)
+    });
+    setTrips(updated);
+    if (selected?.id===tripId) setSelected(updated.find(t=>t.id===tripId));
+  };
+
+  const filtered = useMemo(() => {
+    if (statusF==='전체') return trips;
+    return trips.filter(t=>t.status===statusF);
+  }, [trips, statusF]);
+
+  const upcoming = trips.filter(t=>t.status==='plan').length;
+  const ongoing  = trips.filter(t=>t.status==='going').length;
+  const doneCount= trips.filter(t=>t.status==='done').length;
+
+  const selTrip = selected ? trips.find(t=>t.id===selected.id) : null;
+
+  return (
+    <div className="fade-in section">
+      {/* Status + inline stats */}
+      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginBottom:8}}>
+        <span className="istat-item" style={{background:'rgba(90,159,224,.1)',color:'var(--sky-acc)'}}>전체 {trips.length}</span>
+        <span className="istat-item" style={{background:'rgba(139,115,212,.1)',color:'var(--lav-acc)'}}>계획중 {upcoming}</span>
+        <span className="istat-item" style={{background:'rgba(58,170,118,.1)',color:'#3aaa76'}}>여행중 {ongoing}</span>
+        <span className="istat-item">완료 {doneCount}</span>
+      </div>
+      <div className="color-chips" style={{marginBottom:12}}>
+        {['전체','plan','going','done'].map(s=>(
+          <button key={s} className={`color-chip ${statusF===s?'active':''}`}
+            style={statusF===s?{background:'var(--sky-acc)',borderColor:'var(--sky-acc)'}:{}}
+            onClick={()=>setStatusF(s)}>
+            {s==='전체'?'전체':TRV_STATUS[s]}
+          </button>
+        ))}
+        <button className="btn b-trv btn-sm" style={{marginLeft:'auto'}} onClick={openAdd}><Icon name="Plus" size={12}/>여행 추가</button>
+      </div>
+
+      {/* Trip detail panel */}
+      {selTrip&&(
+        <div className="trip-detail">
+          {/* 상단 헤더 */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+            <div className="trip-detail-title">
+              <Icon name="MapPin" size={16} color="var(--sky-acc)" />
+              {selTrip.name}
+              <span className={`pill ${TRV_COLORS[selTrip.status]}`}>{TRV_STATUS[selTrip.status]}</span>
+            </div>
+            <div className="ra">
+              <button className="btn btn-ic btn-sm" onClick={()=>openEdit(selTrip)}><Icon name="Pencil" size={11}/></button>
+              <button className="btn b-danger btn-sm" onClick={()=>remove(selTrip.id)}><Icon name="Trash2" size={11}/></button>
+              <button className="btn b-ghost btn-sm" onClick={()=>setSelected(null)}><Icon name="X" size={11}/></button>
+            </div>
+          </div>
+
+          {/* 내부 탭: 개요 / 일별계획 */}
+          <div style={{display:'flex',gap:0,borderBottom:'2px solid var(--border)',marginBottom:14}}>
+            {[['overview','개요','LayoutList'],['days','일별 계획','CalendarDays']].map(([id,label,icon])=>(
+              <button key={id}
+                style={{display:'flex',alignItems:'center',gap:5,padding:'7px 14px',border:'none',background:'none',fontFamily:'inherit',fontSize:12,fontWeight:600,cursor:'pointer',color:detailTab===id?'var(--sky-acc)':'var(--text3)',borderBottom:detailTab===id?'2px solid var(--sky-acc)':'2px solid transparent',marginBottom:-2,transition:'all .15s'}}
+                onClick={()=>setDetailTab(id)}>
+                <Icon name={icon} size={13} color={detailTab===id?'var(--sky-acc)':'var(--text3)'}/>{label}
+              </button>
+            ))}
+          </div>
+
+          {/* 개요 탭 */}
+          {detailTab==='overview'&&(
+            <>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+                <div>
+                  <div style={{fontSize:10,fontWeight:600,color:'var(--text3)',marginBottom:4}}>목적지</div>
+                  <div style={{fontSize:13,fontWeight:600}}>{selTrip.dest||'—'}</div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,fontWeight:600,color:'var(--text3)',marginBottom:4}}>여행 기간</div>
+                  <div style={{fontSize:12,color:'var(--text2)'}}>{selTrip.startDate&&selTrip.endDate?`${selTrip.startDate} ~ ${selTrip.endDate}`:'날짜 미설정'}</div>
+                </div>
+              </div>
+
+              {/* Budget */}
+              {(selTrip.budget||selTrip.spent)&&(
+                <div style={{background:'var(--sky)',borderRadius:'var(--rs)',padding:'12px 14px',marginBottom:14}}>
+                  <div style={{fontSize:11,fontWeight:700,color:'var(--sky-acc)',marginBottom:8,display:'flex',alignItems:'center',gap:5}}><Icon name="Wallet" size={13} color="var(--sky-acc)"/>예산 현황</div>
+                  <div className="budget-row">
+                    {selTrip.budget&&<div className="budget-item"><span className="budget-lbl">총 예산</span><span className="budget-val">₩{Number(selTrip.budget).toLocaleString()}</span></div>}
+                    {selTrip.spent&&<div className="budget-item"><span className="budget-lbl">사용금액</span><span className="budget-val" style={{color:'var(--blush-acc)'}}>₩{Number(selTrip.spent).toLocaleString()}</span></div>}
+                    {selTrip.budget&&selTrip.spent&&<div className="budget-item"><span className="budget-lbl">잔여</span><span className="budget-val" style={{color:'var(--mint-acc)'}}>₩{(Number(selTrip.budget)-Number(selTrip.spent)).toLocaleString()}</span></div>}
+                  </div>
+                  {selTrip.budget&&selTrip.spent&&(
+                    <div style={{marginTop:10}}>
+                      <ProgressBar value={Math.round((Number(selTrip.spent)/Number(selTrip.budget))*100)} accent="var(--sky-acc)" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Checklist */}
+              <div style={{marginBottom:4}}>
+                <div style={{fontSize:11,fontWeight:700,color:'var(--text2)',marginBottom:8,display:'flex',alignItems:'center',gap:5}}>
+                  <Icon name="CheckSquare" size={13} color="var(--lav-acc)"/>
+                  준비물 체크리스트
+                  <span style={{marginLeft:'auto',fontSize:10,color:'var(--text3)'}}>
+                    {(selTrip.checklist||[]).filter(c=>c.done).length}/{(selTrip.checklist||[]).length}
+                  </span>
+                </div>
+                <div className="check-list">
+                  {(selTrip.checklist||[]).map(c=>(
+                    <div key={c.id} className={`check-item ${c.done?'done':''}`}>
+                      <input type="checkbox" id={c.id} checked={c.done} onChange={()=>toggleCheck(selTrip.id,c.id)} />
+                      <label htmlFor={c.id}>{c.text}</label>
+                      <button style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',padding:2}} onClick={()=>removeCheck(selTrip.id,c.id)}><Icon name="X" size={11}/></button>
+                    </div>
+                  ))}
+                </div>
+                <div className="check-add">
+                  <input className="inp" style={{flex:1}} value={newCheck} onChange={e=>setNewCheck(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&addCheck(selTrip.id)} placeholder="항목 추가 후 Enter" />
+                  <button className="btn b-trv btn-sm" onClick={()=>addCheck(selTrip.id)}><Icon name="Plus" size={12}/></button>
+                </div>
+              </div>
+
+              {selTrip.note&&<div style={{marginTop:12,padding:'10px 12px',background:'#f9f7ff',borderRadius:'var(--rs)',fontSize:12,color:'var(--text2)',lineHeight:1.6}}>
+                <span style={{fontWeight:600,fontSize:10,color:'var(--text3)'}}>메모 · </span>{selTrip.note}
+              </div>}
+            </>
+          )}
+
+          {/* 일별 계획 탭 */}
+          {detailTab==='days'&&(
+            <DayPlanPanel trip={selTrip} trips={trips} setTrips={setTrips} setSelected={setSelected} />
+          )}
+        </div>
+      )}
+
+      {/* Trip cards */}
+      {filtered.length===0?(
+        <div className="card"><div className="empty"><Icon name="Plane" size={28}/><p>등록된 여행이 없습니다</p></div></div>
+      ):(
+        <div className="trip-grid">
+          {filtered.map(t=>{
+            const total = (t.checklist||[]).length;
+            const doneCl= (t.checklist||[]).filter(c=>c.done).length;
+            const pct   = total ? Math.round((doneCl/total)*100) : 0;
+            const dayCount = (t.days||[]).length;
+            const actCount = (t.days||[]).reduce((s,d)=>s+(d.activities||[]).length,0);
+            return (
+              <div key={t.id} className={`trip-card ${selTrip?.id===t.id?'selected':''}`} onClick={()=>{setSelected(selTrip?.id===t.id?null:t);setDetailTab('overview');}}>
+                <TripCardImage tripId={t.id} name={t.name} dest={t.dest} onOpen={v=>{setLbSrc(v);}} />
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
+                  <span className={`pill ${TRV_COLORS[t.status]}`}>{TRV_STATUS[t.status]}</span>
+                  <div className="ra" onClick={e=>e.stopPropagation()}>
+                    <button className="btn btn-ic btn-sm" onClick={()=>openEdit(t)}><Icon name="Pencil" size={11}/></button>
+                    <button className="btn b-danger btn-sm" onClick={()=>remove(t.id)}><Icon name="Trash2" size={11}/></button>
+                  </div>
+                </div>
+                <div className="trip-name">{t.name}</div>
+                {t.dest&&<div className="trip-dest"><Icon name="MapPin" size={12} color="var(--sky-acc)"/>{t.dest}</div>}
+                {(t.startDate||t.endDate)&&<div className="trip-dates">{t.startDate} {t.endDate?`~ ${t.endDate}`:''}</div>}
+                {/* 일별 계획 요약 */}
+                {(dayCount>0||actCount>0)&&(
+                  <div style={{display:'flex',gap:6,marginBottom:6,flexWrap:'wrap'}}>
+                    {dayCount>0&&<span className="pill p-blu" style={{fontSize:9}}><Icon name="CalendarDays" size={9}/>{dayCount}일 계획</span>}
+                    {actCount>0&&<span className="pill p-mnt" style={{fontSize:9}}>{actCount}개 활동</span>}
+                  </div>
+                )}
+                {total>0&&(
+                  <div className="trip-prog-row">
+                    <div style={{flex:1}}><ProgressBar value={pct} accent="var(--sky-acc)" /></div>
+                    <span style={{fontSize:10,color:'var(--text3)',flexShrink:0}}>{doneCl}/{total}</span>
+                  </div>
+                )}
+                {t.budget&&<div style={{marginTop:8,fontSize:11,color:'var(--text2)'}}>예산 ₩{Number(t.budget).toLocaleString()}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Modal open={modal} onClose={()=>setModal(false)} title={<><Icon name="Plane" size={14}/>{editing?'여행 수정':'여행 추가'}</>} accent="b-trv" onSave={save}>
+        <div className="fg2">
+          <div className="fg full"><label>여행명 *</label><input className="inp" value={form.name} onChange={e=>sf('name')(e.target.value)} placeholder="예) 오사카 봄여행" /></div>
+          <div className="fg full"><label>목적지</label><input className="inp" value={form.dest} onChange={e=>sf('dest')(e.target.value)} placeholder="예) 일본 오사카" /></div>
+          <div className="fg"><label>출발일</label><input className="inp" type="date" value={form.startDate} onChange={e=>sf('startDate')(e.target.value)} /></div>
+          <div className="fg"><label>귀국일</label><input className="inp" type="date" value={form.endDate} onChange={e=>sf('endDate')(e.target.value)} /></div>
+          <div className="fg"><label>상태</label>
+            <select className="sel" value={form.status} onChange={e=>sf('status')(e.target.value)}>
+              {Object.entries(TRV_STATUS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label>총 예산 (₩)</label><input className="inp" type="number" value={form.budget} onChange={e=>sf('budget')(e.target.value)} placeholder="예) 500000" /></div>
+          <div className="fg full"><label>사용 금액 (₩)</label><input className="inp" type="number" value={form.spent} onChange={e=>sf('spent')(e.target.value)} placeholder="예) 230000" /></div>
+          <div className="fg full"><label>사진</label><ImageUploadField itemId={form.id} /></div>
+          <div className="fg full"><label>메모</label><textarea className="txta" value={form.note} onChange={e=>sf('note')(e.target.value)} placeholder="숙소, 항공, 여행 팁 등" /></div>
+        </div>
+      </Modal>
+      {lbSrc&&<Lightbox src={lbSrc} onClose={()=>setLbSrc(null)}/>}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════
+const TABS = [
+  { id:'inv', label:'생필품', icon:'ShoppingCart', cls:'t-inv' },
+  { id:'cos', label:'화장품', icon:'Sparkles',     cls:'t-cos' },
+  { id:'clo', label:'옷장',   icon:'Shirt',        cls:'t-clo' },
+  { id:'wsh', label:'잡동사니', icon:'ShoppingBag', cls:'t-wsh' },
+  { id:'trv', label:'여행',   icon:'Plane',        cls:'t-trv' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// FIREBASE SETUP & AUTH UI
+// ═══════════════════════════════════════════════════════════════════
+const FirebaseSettings = ({ open, onClose, auth }) => {
+  const [cfgText, setCfgText] = useState(() => {
+    const c = getStoredFbConfig();
+    return c ? JSON.stringify(c, null, 2) : '';
+  });
+  const [mode, setMode] = useState('signin'); // signin | signup
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  if (!open) return null;
+
+  const configured = !!__fbAuth;
+  const signedIn = !!auth.user;
+
+  const saveConfig = () => {
+    setMsg('');
+    let cfg;
+    try {
+      // 사용자가 JS 객체 형태로 붙여넣을 수도 있으니 보정
+      let txt = cfgText.trim();
+      // const firebaseConfig = {...}; 형태 지원
+      const m = txt.match(/\{[\s\S]*\}/);
+      if (m) txt = m[0];
+      // JS 키를 JSON 키로 변환 (apiKey: → "apiKey":)
+      txt = txt.replace(/([{,]\s*)([a-zA-Z_$][\w$]*)\s*:/g, '$1"$2":');
+      // 작은따옴표 → 큰따옴표
+      txt = txt.replace(/'/g, '"');
+      // 후행 쉼표 제거
+      txt = txt.replace(/,(\s*[}\]])/g, '$1');
+      cfg = JSON.parse(txt);
+    } catch (e) {
+      setMsg('⚠️ 설정 JSON 파싱 실패: ' + e.message);
+      return;
+    }
+    if (!cfg.apiKey || !cfg.projectId) {
+      setMsg('⚠️ apiKey, projectId가 필요합니다.');
+      return;
+    }
+    localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
+    const result = initFirebase(cfg);
+    if (result) {
+      setMsg('✓ Firebase 연결 완료! 로그인하세요.');
+      setTimeout(()=>window.location.reload(), 800);
+    } else {
+      setMsg('⚠️ Firebase 초기화 실패');
+    }
+  };
+
+  const signIn = async () => {
+    if (!__fbAuth) return setMsg('먼저 Firebase 설정을 저장하세요.');
+    if (!email || !pw) return setMsg('이메일과 비밀번호를 입력하세요.');
+    setBusy(true); setMsg('');
+    try {
+      if (mode === 'signup') await __fbAuth.createUserWithEmailAndPassword(email, pw);
+      else await __fbAuth.signInWithEmailAndPassword(email, pw);
+      setMsg('✓ 로그인 완료');
+      setTimeout(onClose, 400);
+    } catch(e) {
+      setMsg('⚠️ ' + (e.message || e.code));
+    } finally { setBusy(false); }
+  };
+
+  const signOut = async () => {
+    if (!__fbAuth) return;
+    await __fbAuth.signOut();
+    setMsg('로그아웃 됨');
+  };
+
+  const clearConfig = () => {
+    if (!confirm('Firebase 설정을 지우고 로컬 모드로 전환할까요? (데이터는 보존됩니다)')) return;
+    localStorage.removeItem(FB_CONFIG_KEY);
+    if (__fbAuth) { __fbAuth.signOut().catch(()=>{}); }
+    setTimeout(()=>window.location.reload(), 300);
+  };
+
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:500}}>
+        <div className="modal-hd">
+          <span className="modal-title">
+            <Icon name="Cloud" size={15} color={signedIn?'#3aaa76':'var(--text3)'}/>
+            클라우드 동기화 (Firebase)
+          </span>
+          <button className="btn btn-ic btn-sm" onClick={onClose}><Icon name="X" size={13}/></button>
+        </div>
+        <div className="modal-body">
+          {/* 현재 상태 */}
+          <div style={{padding:'10px 12px',background:signedIn?'#e8f8f0':configured?'#fff8e1':'var(--lav)',borderRadius:'var(--rs)',marginBottom:14,fontSize:12,lineHeight:1.7}}>
+            <div style={{fontWeight:700,marginBottom:3,color:signedIn?'#3aaa76':configured?'#b07800':'var(--lav-acc)'}}>
+              {signedIn ? '✓ 동기화 활성' : configured ? '⚙ Firebase 설정 완료, 로그인 필요' : '○ 로컬 모드 (이 기기에서만 저장)'}
+            </div>
+            {signedIn && <div style={{color:'var(--text2)'}}>계정: {auth.user.email}</div>}
+          </div>
+
+          {/* 1단계: Firebase 설정 */}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,fontWeight:700,marginBottom:6,display:'flex',alignItems:'center',gap:5}}>
+              <span style={{background:'var(--lav-acc)',color:'white',width:18,height:18,borderRadius:'50%',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10}}>1</span>
+              Firebase 설정 JSON
+            </div>
+            <div style={{fontSize:11,color:'var(--text3)',marginBottom:6,lineHeight:1.6}}>
+              Firebase Console → 프로젝트 설정 → 내 앱 → SDK 설정 및 구성에서 <b>firebaseConfig</b> 객체를 복사해서 붙여넣으세요.
+            </div>
+            <textarea
+              className="txta" style={{fontFamily:'monospace',fontSize:11,minHeight:120}}
+              placeholder={`{
+  "apiKey": "AIza...",
+  "authDomain": "myapp.firebaseapp.com",
+  "projectId": "myapp",
+  ...
+}`}
+              value={cfgText} onChange={e=>setCfgText(e.target.value)} />
+            <div style={{display:'flex',gap:6,marginTop:6}}>
+              <button className="btn b-pri btn-sm" onClick={saveConfig}>
+                <Icon name="Save" size={11}/>설정 저장 & 연결
+              </button>
+              {configured && (
+                <button className="btn b-danger btn-sm" onClick={clearConfig}>
+                  <Icon name="X" size={11}/>설정 지우기
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 2단계: 로그인 */}
+          <div style={{opacity:configured?1:.4,pointerEvents:configured?'auto':'none'}}>
+            <div style={{fontSize:12,fontWeight:700,marginBottom:6,display:'flex',alignItems:'center',gap:5}}>
+              <span style={{background:'var(--lav-acc)',color:'white',width:18,height:18,borderRadius:'50%',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10}}>2</span>
+              로그인 / 가입
+            </div>
+            {signedIn ? (
+              <button className="btn b-danger btn-sm" onClick={signOut}><Icon name="LogOut" size={11}/>로그아웃</button>
+            ) : (
+              <>
+                <div className="tog-wrap" style={{maxWidth:260,marginBottom:8}}>
+                  <button type="button" className={`tog ${mode==='signin'?'t-yes':''}`} onClick={()=>setMode('signin')}>로그인</button>
+                  <button type="button" className={`tog ${mode==='signup'?'t-yes':''}`} onClick={()=>setMode('signup')}>회원가입</button>
+                </div>
+                <div className="fg2">
+                  <div className="fg full"><label>이메일</label>
+                    <input className="inp" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+                  </div>
+                  <div className="fg full"><label>비밀번호 (6자 이상)</label>
+                    <input className="inp" type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••" />
+                  </div>
+                </div>
+                <button className="btn b-pri btn-sm" style={{marginTop:8}} onClick={signIn} disabled={busy}>
+                  {busy?'처리 중…':<><Icon name="LogIn" size={11}/>{mode==='signup'?'가입하고 시작':'로그인'}</>}
+                </button>
+              </>
+            )}
+          </div>
+
+          {msg && (
+            <div style={{marginTop:14,padding:'8px 12px',background:msg.startsWith('✓')?'#e8f8f0':'#fff4f4',color:msg.startsWith('✓')?'#3aaa76':'#c0392b',borderRadius:'var(--rs)',fontSize:11,fontWeight:600}}>
+              {msg}
+            </div>
+          )}
+
+          {/* 안내 */}
+          <details style={{marginTop:16,padding:'10px 12px',background:'var(--lav)',borderRadius:'var(--rs)',fontSize:11,color:'var(--text2)',lineHeight:1.7}}>
+            <summary style={{cursor:'pointer',fontWeight:700,color:'var(--lav-acc)'}}>📖 처음 설정하시나요? (Firebase 가이드)</summary>
+            <div style={{marginTop:8}}>
+              <b>① Firebase 프로젝트 생성</b><br/>
+              → <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" style={{color:'var(--lav-acc)'}}>console.firebase.google.com</a> → 프로젝트 추가<br/><br/>
+              <b>② Authentication 활성화</b><br/>
+              → 빌드 → Authentication → 시작하기 → 이메일/비밀번호 사용 설정<br/><br/>
+              <b>③ Firestore Database 생성</b><br/>
+              → 빌드 → Firestore Database → 데이터베이스 만들기 → <b>프로덕션 모드</b><br/>
+              → 규칙 탭에서 아래 내용으로 저장:<br/>
+              <pre style={{background:'white',padding:8,borderRadius:6,fontSize:10,marginTop:4,overflow:'auto'}}>{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}`}</pre><br/>
+              <b>④ 웹 앱 등록 & 설정 복사</b><br/>
+              → 프로젝트 개요 → 웹 아이콘 (&lt;/&gt;) → 앱 등록 → firebaseConfig 객체 복사 → 위 텍스트박스에 붙여넣기<br/><br/>
+              <b>⑤ 도메인 등록 (GitHub Pages 호스팅 시)</b><br/>
+              → Authentication → Settings → 승인된 도메인 → 본인의 GitHub Pages 도메인 (예: yourname.github.io) 추가<br/><br/>
+              <b>⑥ 모바일에서도 동일 계정으로 로그인하면 자동 동기화됩니다.</b>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const App = () => {
+  const [tab, setTab] = useState('inv');
+  const [fbModal, setFbModal] = useState(false);
+  const auth = useFirebaseAuth();
+  const signedIn = !!auth.user;
+
+  return (
+    <div className="app">
+      <div className="header">
+        <div className="logo"><Icon name="Package" size={18} color="white" /></div>
+        <div className="header-text">
+          <div className="header-title">생활 통합관리</div>
+          <div className="header-sub">생필품 · 화장품 · 옷장 · 잡동사니 · 여행</div>
+        </div>
+        <ImportExport renderLinks={true} />
+        <button
+          className="firebase-badge"
+          style={{
+            cursor:'pointer',border:'none',
+            background: signedIn?'#e8f8f0':'#fff4e5',
+            color: signedIn?'#2e7d52':'#e07d28',
+            borderColor: signedIn?'#b2dfcc':'#ffd8a8',
+            display:'inline-flex',alignItems:'center',gap:4
+          }}
+          onClick={()=>setFbModal(true)}
+          title={signedIn?`동기화 중 (${auth.user.email})`:'클라우드 동기화 설정'}
+        >
+          {signedIn ? '☁️ 동기화 ON' : '⚙️ 동기화 OFF'}
+        </button>
+      </div>
+
+      <FirebaseSettings open={fbModal} onClose={()=>setFbModal(false)} auth={auth} />
+
+      <ImportExport renderLinks={false} />
+
+      <div className="tab-bar">        {TABS.map(t => (
+          <button key={t.id} className={`tab-btn ${t.cls} ${tab===t.id?'on':''}`} onClick={()=>setTab(t.id)}>
+            <Icon name={t.icon} size={14} />
+            <span className="tab-label">{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {tab==='inv' && <InventoryTab />}
+      {tab==='cos' && <CosmeticsTab />}
+      {tab==='clo' && <ClosetTab />}
+      {tab==='wsh' && <WishTab />}
+      {tab==='trv' && <TravelTab />}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
